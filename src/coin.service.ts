@@ -7,8 +7,8 @@ import {
   NodesOptions,
   TxSignResult,
 } from './common';
-import { <%- networkCap %>NodeAdapter } from './node-adapter';
-import { <%- networkCap %>TransactionParams } from './types';
+import { XxxNodeAdapter } from './node-adapter';
+import { XxxTransactionParams } from './types';
 
 
 /**
@@ -16,10 +16,10 @@ import { <%- networkCap %>TransactionParams } from './types';
  * Вместо ХХХ указываем тикер.
  * BaseCoinService - это базовый класс который определяет все методы и их типы.
  */
-export class <%- networkCap %>CoinService extends BaseCoinService {
+export class XxxCoinService extends BaseCoinService {
   public nodes: BaseNodeAdapter[] = [];
   public blockBooks: BaseNodeAdapter[] = [];
-  public readonly network = '<%- networkCap %>';
+  public readonly network = 'Xxx';
   protected mainNodeAdapter = XxxNodeAdapter;
 
   /**

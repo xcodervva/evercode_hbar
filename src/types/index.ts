@@ -4,8 +4,8 @@ import {
   TransactionParams,
 } from '../common';
 
-export type <%- networkCap %>TransactionParams = TransactionParams;
+export type XxxTransactionParams = TransactionParams;
 
-export type <%- networkCap %>TransactionBroadcastParams = TransactionBroadcastParams;
+export type XxxTransactionBroadcastParams = TransactionBroadcastParams;
 
-export type <%- networkCap %>TransactionBroadcastResults = TransactionBroadcastResults;
+export type XxxTransactionBroadcastResults = TransactionBroadcastResults;
