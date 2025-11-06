@@ -9,8 +9,8 @@ import {
   NodesOptions,
   TxSignResult,
 } from './common';
-import { HbarNodeAdapter } from './node-adapter';
-import { HbarTransactionParams } from './types';
+import { HBARNodeAdapter } from './node-adapter';
+import { HBARTransactionParams } from './types';
 
 
 /**
@@ -18,11 +18,11 @@ import { HbarTransactionParams } from './types';
  * Вместо ХХХ указываем тикер.
  * BaseCoinService - это базовый класс который определяет все методы и их типы.
  */
-export class HbarCoinService extends BaseCoinService {
+export class HBARCoinService extends BaseCoinService {
   public nodes: BaseNodeAdapter[] = [];
   public blockBooks: BaseNodeAdapter[] = [];
   public readonly network = 'HBAR';
-  protected mainNodeAdapter = HbarNodeAdapter;
+  protected mainNodeAdapter = HBARNodeAdapter;
 
   /**
    * Инициализация провайдера(ов).
@@ -98,7 +98,30 @@ export class HbarCoinService extends BaseCoinService {
     privateKey: string,
     publicKey: string,
   ): Promise<AddressValidateResult> {
-    return null;
+    if (!address) return "Адрес отсутствует";
+    if (!privateKey) return "Приватный ключ отсутствует";
+    if (!publicKey) return "Публичный ключ отсутствует";
+
+    if (!isAddress(address)) return "Неверный формат адреса";
+
+    if (!privateKey.startsWith("0x") || privateKey.length !== 66)
+      return "Некорректный формат приватного ключа (ожидается 32 байта в hex)";
+
+    // Упрощённая и корректная проверка для Ethers v6
+    if (!publicKey.startsWith("0x") || !/^[0-9a-fA-F]+$/.test(publicKey.slice(2))) {
+      return "Некорректный формат публичного ключа (должен быть hex)";
+    }
+
+    try {
+      const walletFromPriv = new Wallet(privateKey);
+      if (walletFromPriv.address.toLowerCase() !== address.toLowerCase()) {
+        return "Приватный ключ не соответствует указанному адресу";
+      }
+    } catch {
+      return "Ошибка при проверке приватного ключа";
+    }
+
+    return true;
   }
 
   /**
@@ -110,7 +133,7 @@ export class HbarCoinService extends BaseCoinService {
   async txSign(
     ticker: string,
     privateKeys: AddressKeyPair,
-    params: HbarTransactionParams,
+    params: HBARTransactionParams,
   ): Promise<TxSignResult> {
     return null;
   }
@@ -126,8 +149,8 @@ export class HbarCoinService extends BaseCoinService {
    */
   async txBuild(
     ticker: string,
-    params: HbarTransactionParams,
-  ): Promise<HbarTransactionParams> {
+    params: HBARTransactionParams,
+  ): Promise<HBARTransactionParams> {
     return null;
   }
 }

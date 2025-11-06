@@ -1,11 +1,11 @@
 import { isAddress } from "ethers";
-import { HbarCoinService } from '../src/coin.service';
+import { HBARCoinService } from '../src/coin.service';
 
 describe('address creation', () => {
-  let service: HbarCoinService;
+  let service: HBARCoinService;
 
   beforeAll(() => {
-    service = new HbarCoinService();
+    service = new HBARCoinService();
   });
 
   it('creates unpredictable address', async () => {
@@ -38,26 +38,30 @@ describe('address creation', () => {
 });
 
 describe('address validation', () => {
-  let service: HbarCoinService;
+  let service: HBARCoinService;
 
   beforeAll(() => {
-    service = new HbarCoinService();
+    service = new HBARCoinService();
   });
 
   it('validate correct addresses', async () => {
-
+    const { address, privateKey, publicKey } = await service.addressCreate(service.network);
+    const result = await service.addressValidate(service.network, address, privateKey, publicKey);
+    expect(result).toBe(true);
   });
 
   it('return error messages on corresponding errors', async () => {
-
+    const res = await service.addressValidate(service.network, "0x12345", "0xabc", "0xdef");
+    expect(typeof res).toBe("string");
+    expect(res).toContain("Неверный формат адреса");
   });
 });
 
 describe('transaction build', () => {
-  let service: HbarCoinService;
+  let service: HBARCoinService;
 
   beforeAll(() => {
-    service = new HbarCoinService();
+    service = new HBARCoinService();
   });
 
   it('build transaction', async () => {
@@ -70,10 +74,10 @@ describe('transaction build', () => {
 });
 
 describe('transaction sign', () => {
-  let service: HbarCoinService;
+  let service: HBARCoinService;
 
   beforeAll(() => {
-    service = new HbarCoinService();
+    service = new HBARCoinService();
   });
 
   it('signs', async () => {
