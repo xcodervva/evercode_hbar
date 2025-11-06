@@ -4,8 +4,8 @@ import {
   TransactionParams,
 } from '../common';
 
-export type XxxTransactionParams = TransactionParams;
+export type HbarTransactionParams = TransactionParams;
 
-export type XxxTransactionBroadcastParams = TransactionBroadcastParams;
+export type HbarTransactionBroadcastParams = TransactionBroadcastParams;
 
-export type XxxTransactionBroadcastResults = TransactionBroadcastResults;
+export type HbarTransactionBroadcastResults = TransactionBroadcastResults;

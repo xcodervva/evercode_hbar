@@ -6,7 +6,7 @@ import {
   GetHeightResult,
   TxByHashResult,
 } from './common';
-import { XxxTransactionBroadcastParams, XxxTransactionBroadcastResults } from './types';
+import { HbarTransactionBroadcastParams, HbarTransactionBroadcastResults } from './types';
 
 /**
  * Класс, который инициализируется в XxxCoinService для выполнения сетевых запросов.
@@ -18,7 +18,7 @@ import { XxxTransactionBroadcastParams, XxxTransactionBroadcastResults } from '.
  * @param confirmationLimit - Количество конфирмаций, число блоков которое отсчитывается после транзакции, чтобы считать ее завершенной.
  * @param utxoConfirmationLimit - Опциональное значение, используется только для сетей с utxo. Количество конфирмаций для utxo, число блоков которое отсчитывается после транзакции, чтобы считать ее завершенной.
  */
-export class XxxNodeAdapter extends BaseNodeAdapter {
+export class HbarNodeAdapter extends BaseNodeAdapter {
   constructor(
     readonly network: string,
     readonly name: string = 'NN',
@@ -81,8 +81,8 @@ export class XxxNodeAdapter extends BaseNodeAdapter {
    */
   async txBroadcast(
     ticker: string,
-    params: XxxTransactionBroadcastParams,
-  ): Promise<XxxTransactionBroadcastResults | { error: string }> {
+    params: HbarTransactionBroadcastParams,
+  ): Promise<HbarTransactionBroadcastResults | { error: string }> {
     return null;
   }
 

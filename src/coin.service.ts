@@ -7,8 +7,8 @@ import {
   NodesOptions,
   TxSignResult,
 } from './common';
-import { XxxNodeAdapter } from './node-adapter';
-import { XxxTransactionParams } from './types';
+import { HbarNodeAdapter } from './node-adapter';
+import { HbarTransactionParams } from './types';
 
 
 /**
@@ -16,11 +16,11 @@ import { XxxTransactionParams } from './types';
  * Вместо ХХХ указываем тикер.
  * BaseCoinService - это базовый класс который определяет все методы и их типы.
  */
-export class XxxCoinService extends BaseCoinService {
+export class HbarCoinService extends BaseCoinService {
   public nodes: BaseNodeAdapter[] = [];
   public blockBooks: BaseNodeAdapter[] = [];
   public readonly network = 'XXX';
-  protected mainNodeAdapter = XxxNodeAdapter;
+  protected mainNodeAdapter = HbarNodeAdapter;
 
   /**
    * Инициализация провайдера(ов).
@@ -91,7 +91,7 @@ export class XxxCoinService extends BaseCoinService {
   async txSign(
     ticker: string,
     privateKeys: AddressKeyPair,
-    params: XxxTransactionParams,
+    params: HbarTransactionParams,
   ): Promise<TxSignResult> {
     return null;
   }
@@ -107,8 +107,8 @@ export class XxxCoinService extends BaseCoinService {
    */
   async txBuild(
     ticker: string,
-    params: XxxTransactionParams,
-  ): Promise<XxxTransactionParams> {
+    params: HbarTransactionParams,
+  ): Promise<HbarTransactionParams> {
     return null;
   }
 }

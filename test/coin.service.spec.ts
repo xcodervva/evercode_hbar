@@ -1,10 +1,10 @@
-import { XxxCoinService } from './coin.service';
+import { HbarCoinService } from '../src/coin.service';
 
 describe('address creation', () => {
-  let service: XxxCoinService;
+  let service: HbarCoinService;
 
   beforeAll(() => {
-    service = new XxxCoinService();
+    service = new HbarCoinService();
   });
 
   it('creates unpredictable address', async () => {
@@ -17,10 +17,10 @@ describe('address creation', () => {
 });
 
 describe('address validation', () => {
-  let service: XxxCoinService;
+  let service: HbarCoinService;
 
   beforeAll(() => {
-    service = new XxxCoinService();
+    service = new HbarCoinService();
   });
 
   it('validate correct addresses', async () => {
@@ -33,10 +33,10 @@ describe('address validation', () => {
 });
 
 describe('transaction build', () => {
-  let service: XxxCoinService;
+  let service: HbarCoinService;
 
   beforeAll(() => {
-    service = new XxxCoinService();
+    service = new HbarCoinService();
   });
 
   it('build transaction', async () => {
@@ -49,10 +49,10 @@ describe('transaction build', () => {
 });
 
 describe('transaction sign', () => {
-  let service: XxxCoinService;
+  let service: HbarCoinService;
 
   beforeAll(() => {
-    service = new XxxCoinService();
+    service = new HbarCoinService();
   });
 
   it('signs', async () => {

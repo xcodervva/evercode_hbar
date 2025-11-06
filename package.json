@@ -21,8 +21,9 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
   },
   "dependencies": {
-    "rimraf": "3.0.2",
-    "axios": "1.4.0"
+    "axios": "1.4.0",
+    "dotenv": "^17.2.3",
+    "rimraf": "3.0.2"
   },
   "devDependencies": {
     "@types/jest": "^26.0.24",
