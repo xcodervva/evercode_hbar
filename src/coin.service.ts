@@ -1,3 +1,5 @@
+import { Wallet, isAddress } from "ethers";
+
 import {
   AddressCreateResult,
   AddressKeyPair,
@@ -19,7 +21,7 @@ import { HbarTransactionParams } from './types';
 export class HbarCoinService extends BaseCoinService {
   public nodes: BaseNodeAdapter[] = [];
   public blockBooks: BaseNodeAdapter[] = [];
-  public readonly network = 'XXX';
+  public readonly network = 'HBAR';
   protected mainNodeAdapter = HbarNodeAdapter;
 
   /**
@@ -63,7 +65,24 @@ export class HbarCoinService extends BaseCoinService {
   async addressCreate(
     ticker: string,
   ): Promise<AddressCreateResult> {
-    return null;
+    // Генерация кошелька с безопасной энтропией
+    const wallet = Wallet.createRandom();
+
+    // Извлекаем необходимые данные
+    const address = wallet.address;
+    const publicKey = wallet.publicKey;
+    const privateKey = wallet.privateKey;
+
+    // Проверяем корректность адреса
+    if (!isAddress(address)) {
+      throw new Error(`Некорректный адрес для тикера ${ticker}: ${address}`);
+    }
+
+    return {
+      address,
+      privateKey,
+      publicKey,
+    };
   }
 
   /**
