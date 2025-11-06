@@ -1,4 +1,4 @@
-import { isAddress } from "ethers";
+import { isAddress, Wallet, HDNodeWallet, Mnemonic } from "ethers";
 import { HBARCoinService } from '../src/coin.service';
 
 describe('address creation', () => {
@@ -33,7 +33,24 @@ describe('address creation', () => {
   });
 
   it('creates known address', async () => {
+    // Детерминированные данные
+    const mnemonic = Mnemonic.fromPhrase(
+        "test test test test test test test test test test test junk"
+    );
+    const knownWallet = HDNodeWallet.fromMnemonic(mnemonic);
+    const expectedAddress = knownWallet.address;
 
+    // Мокаем createRandom, возвращая HDNodeWallet
+    const spy = jest
+        .spyOn(Wallet, "createRandom")
+        .mockReturnValue(knownWallet as any);
+
+    const result = await service.addressCreate(service.network);
+
+    expect(result.address).toBe(expectedAddress);
+    expect(result.privateKey).toBe(knownWallet.privateKey);
+
+    spy.mockRestore();
   });
 });
 
