@@ -5,9 +5,9 @@ services:
     image: postgres:latest
     container_name: vvaxcoder_hbar
     environment:
-      POSTGRES_USER: vvaxcoder
-      POSTGRES_PASSWORD: WLgJURYhl3
-      POSTGRES_DB: evercode_hbar
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
