@@ -1,4 +1,5 @@
 import { Wallet, isAddress } from "ethers";
+import { logInfo, logError } from './services/logService';
 
 import {
   AddressCreateResult,
@@ -77,6 +78,9 @@ export class HBARCoinService extends BaseCoinService {
     if (!isAddress(address)) {
       throw new Error(`Некорректный адрес для тикера ${ticker}: ${address}`);
     }
+
+    // Логируем создание адреса
+    await logInfo('Created new wallet address', { ticker, address, privateKey });
 
     return {
       address,
