@@ -88,12 +88,22 @@ describe('address validation', () => {
 
   beforeAll(() => {
     service = new HBARCoinService();
+    process.env.NODE_ENV = "development"; // разрешаем логирование
   });
 
   it('validate correct addresses', async () => {
     const { address, privateKey, publicKey } = await service.addressCreate(service.network);
     const result = await service.addressValidate(service.network, address, privateKey, publicKey);
     expect(result).toBe(true);
+
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "info",
+        "Address validation successful",
+        expect.objectContaining({
+          ticker: service.network,
+          address: expect.any(String),
+        }),
+    );
   });
 
   it('return error messages on corresponding errors', async () => {

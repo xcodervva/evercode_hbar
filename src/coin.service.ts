@@ -102,26 +102,62 @@ export class HBARCoinService extends BaseCoinService {
         privateKey: string,
         publicKey: string,
     ): Promise<AddressValidateResult> {
-        if (!address) return "Адрес отсутствует";
-        if (!privateKey) return "Приватный ключ отсутствует";
-        if (!publicKey) return "Публичный ключ отсутствует";
+        if (!address) {
+            await safeLog("error", "Validation failed: missing address", { ticker });
+            return "Адрес отсутствует";
+        }
 
-        if (!isAddress(address)) return "Неверный формат адреса";
+        if (!privateKey) {
+            await safeLog("error", "Validation failed: missing privateKey", { ticker, address });
+            return "Приватный ключ отсутствует";
+        }
 
-        if (!privateKey.startsWith("0x") || privateKey.length !== 66)
+        if (!publicKey) {
+            await safeLog("error", "Validation failed: missing publicKey", { ticker, address });
+            return "Публичный ключ отсутствует"
+        };
+
+        if (!isAddress(address)) {
+            await safeLog("error", "Validation failed: invalid address format", { ticker, address });
+            return "Неверный формат адреса";
+        }
+
+        if (!privateKey.startsWith("0x") || privateKey.length !== 66) {
+            await safeLog("error", "Validation failed: invalid privateKey format", {
+                ticker,
+                privateKey,
+            });
             return "Некорректный формат приватного ключа (ожидается 32 байта в hex)";
+        }
 
         // Упрощённая и корректная проверка для Ethers v6
         if (!publicKey.startsWith("0x") || !/^[0-9a-fA-F]+$/.test(publicKey.slice(2))) {
+            await safeLog("error", "Validation failed: invalid publicKey format", {
+                ticker,
+                publicKey,
+            });
             return "Некорректный формат публичного ключа (должен быть hex)";
         }
 
         try {
             const walletFromPriv = new Wallet(privateKey);
+
             if (walletFromPriv.address.toLowerCase() !== address.toLowerCase()) {
+                await safeLog("error", "Validation failed: privateKey does not match address", {
+                    ticker,
+                    address,
+                });
                 return "Приватный ключ не соответствует указанному адресу";
             }
-        } catch {
+
+            // Всё успешно
+            await safeLog("info", "Address validation successful", { ticker, address });
+        } catch(err: any) {
+            await safeLog("error", "Unexpected error during address validation", {
+                ticker,
+                address,
+                error: err.message,
+            });
             return "Ошибка при проверке приватного ключа";
         }
 
