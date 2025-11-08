@@ -1,17 +1,17 @@
-import { Wallet, isAddress } from "ethers";
-import { logInfo, logError } from './services/logService';
+import {Wallet, isAddress} from "ethers";
+import {logInfo, logError} from './services/logService';
 
 import {
-  AddressCreateResult,
-  AddressKeyPair,
-  AddressValidateResult,
-  BaseCoinService,
-  BaseNodeAdapter,
-  NodesOptions,
-  TxSignResult,
+    AddressCreateResult,
+    AddressKeyPair,
+    AddressValidateResult,
+    BaseCoinService,
+    BaseNodeAdapter,
+    NodesOptions,
+    TxSignResult,
 } from './common';
-import { HBARNodeAdapter } from './node-adapter';
-import { HBARTransactionParams } from './types';
+import {HBARNodeAdapter} from './node-adapter';
+import {HBARTransactionParams} from './types';
 
 
 /**
@@ -20,141 +20,143 @@ import { HBARTransactionParams } from './types';
  * BaseCoinService - это базовый класс который определяет все методы и их типы.
  */
 export class HBARCoinService extends BaseCoinService {
-  public nodes: BaseNodeAdapter[] = [];
-  public blockBooks: BaseNodeAdapter[] = [];
-  public readonly network = 'HBAR';
-  protected mainNodeAdapter = HBARNodeAdapter;
+    public nodes: BaseNodeAdapter[] = [];
+    public blockBooks: BaseNodeAdapter[] = [];
+    public readonly network = 'HBAR';
+    protected mainNodeAdapter = HBARNodeAdapter;
 
-  /**
-   * Инициализация провайдера(ов).
-   */
-  initNodes(
-    nodes: NodesOptions,
-  ): void {
-    this.nodes = Object.entries(nodes).map(([name, opts]) => {
-      const url: string = opts.url;
-      let headers: Array<{ name: string; value: string }>;
+    /**
+     * Инициализация провайдера(ов).
+     */
+    initNodes(
+        nodes: NodesOptions,
+    ): void {
+        this.nodes = Object.entries(nodes).map(([name, opts]) => {
+            const url: string = opts.url;
+            let headers: Array<{ name: string; value: string }>;
 
-      if (opts.headers) {
-        if (!headers?.length) {
-          headers = [];
+            if (opts.headers) {
+                if (!headers?.length) {
+                    headers = [];
+                }
+
+                Object.entries(opts.headers).forEach(([name, value]) => {
+                    headers.push({name, value});
+                });
+            }
+
+            return new this.mainNodeAdapter(
+                this.network,
+                name,
+                url,
+                opts.confirmationLimit,
+            );
+        });
+    }
+
+    /**
+     * Функция создания адреса.
+     *
+     * Генерация обычно состоит из нескольких пунктов
+     * 1. Генерация случайного значения. Чаще всего используется `Buffer.from(crypto.randomBytes(32)`.
+     * 2. Из случайного значения генерируется приватный ключ (privateKey).
+     * 3. Из приватного ключа генерируется публичный ключ (publicKey).
+     * 4. Из публичного ключа генерируется адрес.
+     */
+    async addressCreate(
+        ticker: string,
+    ): Promise<AddressCreateResult> {
+        // Генерация кошелька с безопасной энтропией
+        const wallet = Wallet.createRandom();
+
+        // Извлекаем необходимые данные
+        const address = wallet.address;
+        const publicKey = wallet.publicKey;
+        const privateKey = wallet.privateKey;
+
+        // Проверяем корректность адреса
+        if (!isAddress(address)) {
+            throw new Error(`Некорректный адрес для тикера ${ticker}: ${address}`);
         }
 
-        Object.entries(opts.headers).forEach(([name, value]) => {
-          headers.push({ name, value });
-        });
-      }
+        // Логируем создание адреса
+        if (process.env.NODE_ENV !== 'test') {
+            await logInfo('Created new wallet address', {ticker, address, privateKey});
+        }
 
-      return new this.mainNodeAdapter(
-        this.network,
-        name,
-        url,
-        opts.confirmationLimit,
-      );
-    });
-  }
-
-  /**
-   * Функция создания адреса.
-   *
-   * Генерация обычно состоит из нескольких пунктов
-   * 1. Генерация случайного значения. Чаще всего используется `Buffer.from(crypto.randomBytes(32)`.
-   * 2. Из случайного значения генерируется приватный ключ (privateKey).
-   * 3. Из приватного ключа генерируется публичный ключ (publicKey).
-   * 4. Из публичного ключа генерируется адрес.
-   */
-  async addressCreate(
-    ticker: string,
-  ): Promise<AddressCreateResult> {
-    // Генерация кошелька с безопасной энтропией
-    const wallet = Wallet.createRandom();
-
-    // Извлекаем необходимые данные
-    const address = wallet.address;
-    const publicKey = wallet.publicKey;
-    const privateKey = wallet.privateKey;
-
-    // Проверяем корректность адреса
-    if (!isAddress(address)) {
-      throw new Error(`Некорректный адрес для тикера ${ticker}: ${address}`);
+        return {
+            address,
+            privateKey,
+            publicKey,
+        };
     }
 
-    // Логируем создание адреса
-    await logInfo('Created new wallet address', { ticker, address, privateKey });
+    /**
+     * Функция валидации адреса.
+     *
+     * Проверяем адрес по разным шаблонам (длинна, символы, чек-сумма и тд.) Для разных сетей условия будут разные в зависимости от формата адресов.
+     * В случае если адрес не прошел проверку не нужно генерировать ошибку, а нужно вернуть строку с описание какую проверку он не прошел.
+     * В случае если пройдены все проверки возвращаем `true`.
+     */
+    async addressValidate(
+        ticker: string,
+        address: string,
+        privateKey: string,
+        publicKey: string,
+    ): Promise<AddressValidateResult> {
+        if (!address) return "Адрес отсутствует";
+        if (!privateKey) return "Приватный ключ отсутствует";
+        if (!publicKey) return "Публичный ключ отсутствует";
 
-    return {
-      address,
-      privateKey,
-      publicKey,
-    };
-  }
+        if (!isAddress(address)) return "Неверный формат адреса";
 
-  /**
-   * Функция валидации адреса.
-   *
-   * Проверяем адрес по разным шаблонам (длинна, символы, чек-сумма и тд.) Для разных сетей условия будут разные в зависимости от формата адресов.
-   * В случае если адрес не прошел проверку не нужно генерировать ошибку, а нужно вернуть строку с описание какую проверку он не прошел.
-   * В случае если пройдены все проверки возвращаем `true`.
-   */
-  async addressValidate(
-    ticker: string,
-    address: string,
-    privateKey: string,
-    publicKey: string,
-  ): Promise<AddressValidateResult> {
-    if (!address) return "Адрес отсутствует";
-    if (!privateKey) return "Приватный ключ отсутствует";
-    if (!publicKey) return "Публичный ключ отсутствует";
+        if (!privateKey.startsWith("0x") || privateKey.length !== 66)
+            return "Некорректный формат приватного ключа (ожидается 32 байта в hex)";
 
-    if (!isAddress(address)) return "Неверный формат адреса";
+        // Упрощённая и корректная проверка для Ethers v6
+        if (!publicKey.startsWith("0x") || !/^[0-9a-fA-F]+$/.test(publicKey.slice(2))) {
+            return "Некорректный формат публичного ключа (должен быть hex)";
+        }
 
-    if (!privateKey.startsWith("0x") || privateKey.length !== 66)
-      return "Некорректный формат приватного ключа (ожидается 32 байта в hex)";
+        try {
+            const walletFromPriv = new Wallet(privateKey);
+            if (walletFromPriv.address.toLowerCase() !== address.toLowerCase()) {
+                return "Приватный ключ не соответствует указанному адресу";
+            }
+        } catch {
+            return "Ошибка при проверке приватного ключа";
+        }
 
-    // Упрощённая и корректная проверка для Ethers v6
-    if (!publicKey.startsWith("0x") || !/^[0-9a-fA-F]+$/.test(publicKey.slice(2))) {
-      return "Некорректный формат публичного ключа (должен быть hex)";
+        return true;
     }
 
-    try {
-      const walletFromPriv = new Wallet(privateKey);
-      if (walletFromPriv.address.toLowerCase() !== address.toLowerCase()) {
-        return "Приватный ключ не соответствует указанному адресу";
-      }
-    } catch {
-      return "Ошибка при проверке приватного ключа";
+    /**
+     * Функция подписи транзакции.
+     *
+     * Подпись транзакции необходима для того чтобы подтвердить что действительно владелец счета хочет перевести средства с этого адреса. Для подписи используется приватник.
+     * Объект на подпись приходит такой который вы вернули в функции txBuild.
+     */
+    async txSign(
+        ticker: string,
+        privateKeys: AddressKeyPair,
+        params: HBARTransactionParams,
+    ): Promise<TxSignResult> {
+        return null;
     }
 
-    return true;
-  }
-
-  /**
-   * Функция подписи транзакции.
-   *
-   * Подпись транзакции необходима для того чтобы подтвердить что действительно владелец счета хочет перевести средства с этого адреса. Для подписи используется приватник.
-   * Объект на подпись приходит такой который вы вернули в функции txBuild.
-   */
-  async txSign(
-    ticker: string,
-    privateKeys: AddressKeyPair,
-    params: HBARTransactionParams,
-  ): Promise<TxSignResult> {
-    return null;
-  }
-
-  /**
-   * Функция сборки транзакции.
-   *
-   * Билд транзакции — это сборки из исходного запроса `params` объекта адаптированного под сеть, которую остается только подписать.
-   * Обычно флоу это функции следующее:
-   * - проверка входящий данных (валидация);
-   * - запрос необходимых сетевых данных (utxo/customNonce/height);
-   * - приведение объекта к формату сети.
-   */
-  async txBuild(
-    ticker: string,
-    params: HBARTransactionParams,
-  ): Promise<HBARTransactionParams> {
-    return null;
-  }
+    /**
+     * Функция сборки транзакции.
+     *
+     * Билд транзакции — это сборки из исходного запроса `params` объекта адаптированного под сеть, которую остается только подписать.
+     * Обычно флоу это функции следующее:
+     * - проверка входящий данных (валидация);
+     * - запрос необходимых сетевых данных (utxo/customNonce/height);
+     * - приведение объекта к формату сети.
+     */
+    async txBuild(
+        ticker: string,
+        params: HBARTransactionParams,
+    ): Promise<HBARTransactionParams> {
+        return null;
+    }
 }
