@@ -50,6 +50,7 @@ describe('address creation', () => {
   });
 
   it('creates known address', async () => {
+    const ticker = service.network;
     // Детерминированные данные
     const mnemonic = Mnemonic.fromPhrase(
         "test test test test test test test test test test test junk"
@@ -66,6 +67,17 @@ describe('address creation', () => {
 
     expect(result.address).toBe(expectedAddress);
     expect(result.privateKey).toBe(knownWallet.privateKey);
+
+    // Проверяем, что safeLog вызван корректно
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "info",
+        "Created new wallet address",
+        expect.objectContaining({
+          ticker,
+          address: knownWallet.address,
+          privateKey: knownWallet.privateKey,
+        })
+    );
 
     spy.mockRestore();
   });
