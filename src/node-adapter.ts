@@ -114,7 +114,26 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
    * Функция запроса высоты блокчейна.
    */
   async getHeight(): Promise<GetHeightResult> {
-    return null;
+    try {
+      const url = `${this.url}/api/v1/blocks?limit=1&order=desc`;
+      const response = await axios.get(url);
+
+      if (!response.data || !response.data.blocks?.length) {
+        throw new Error("Некорректный ответ от узла HBAR");
+      }
+
+      const height = response.data.blocks[0].number ?? response.data.blocks[0].index;
+
+      await safeLog("info", "Fetched blockchain height", { height, network: this.network });
+      return height;
+    } catch (error: any) {
+      await safeLog("error", "Failed to fetch blockchain height", {
+        network: this.network,
+        reason: error.message,
+      });
+
+      throw new Error(`Ошибка при получении высоты сети: ${error.message}`);
+    }
   }
 
   /**
