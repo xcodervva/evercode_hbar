@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: './docker/.env' });
+dotenv.config({ path: './docker/.env', debug: false, });
 
 export const dbConfig = {
     host: process.env.DB_HOST || 'localhost',

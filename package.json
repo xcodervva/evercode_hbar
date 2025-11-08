@@ -1,5 +1,5 @@
 {
-  "name": "coins-xxx",
+  "name": "coins-Hedera",
   "version": "0.0.1",
   "author": "",
   "license": "UNLICENSED",
@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "prebuild": "rimraf dist",
-    "test": "jest",
+    "test": "NODE_OPTIONS='--no-deprecation' jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -55,12 +55,18 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(axios)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s",
       "!dist/**",
       "!coverage/**"
     ],
     "coverageDirectory": "./coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^axios$": "<rootDir>/__mocks__/axios.js"
+    }
   }
 }
