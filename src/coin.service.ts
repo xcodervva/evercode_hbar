@@ -118,8 +118,9 @@ export class HBARCoinService extends BaseCoinService {
         };
 
         if (!isAddress(address)) {
-            await safeLog("error", "Validation failed: invalid address format", { ticker, address });
-            return "Неверный формат адреса";
+            const reason = "Неверный формат адреса";
+            await safeLog("error", "Address validation failed", { ticker, address, reason });
+            return reason;
         }
 
         if (!privateKey.startsWith("0x") || privateKey.length !== 66) {

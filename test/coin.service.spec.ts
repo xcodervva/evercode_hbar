@@ -93,6 +93,8 @@ describe('address validation', () => {
 
   it('validate correct addresses', async () => {
     const { address, privateKey, publicKey } = await service.addressCreate(service.network);
+    // очищаем вызовы логгера от addressCreate
+    jest.clearAllMocks();
     const result = await service.addressValidate(service.network, address, privateKey, publicKey);
     expect(result).toBe(true);
 
@@ -110,6 +112,16 @@ describe('address validation', () => {
     const res = await service.addressValidate(service.network, "0x12345", "0xabc", "0xdef");
     expect(typeof res).toBe("string");
     expect(res).toContain("Неверный формат адреса");
+
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "error",
+        "Address validation failed",
+        expect.objectContaining({
+          ticker: service.network,
+          address: "0x12345",
+          reason: expect.stringContaining("Неверный формат адреса"),
+        }),
+    );
   });
 });
 
