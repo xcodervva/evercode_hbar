@@ -1,5 +1,11 @@
 import { isAddress, Wallet, HDNodeWallet, Mnemonic } from "ethers";
 import { HBARCoinService } from '../src/coin.service';
+import * as logService from '../src/services/logService';
+
+jest.mock('../src/services/logService', () => ({
+  logInfo: jest.fn(),
+  logError: jest.fn(),
+}));
 
 describe('address creation', () => {
   let service: HBARCoinService;
@@ -30,6 +36,11 @@ describe('address creation', () => {
 
     // 4. Проверяем, что приватный ключ начинается с '0x'
     expect(result1.privateKey.startsWith("0x")).toBe(true);
+
+    expect(logService.logInfo).toHaveBeenCalledWith(
+        'Created new wallet address',
+        expect.objectContaining({ ticker: service.network }),
+    );
   });
 
   it('creates known address', async () => {
