@@ -1,15 +1,21 @@
+import axios from "axios";
 import {
   AdapterType,
   BalanceByAddressResult,
   BaseNodeAdapter,
+  FromParams,
   GetBlockResult,
   GetHeightResult,
+  ToParams,
   TxByHashResult,
+  TxStatus,
+  Transaction,
 } from './common';
-import { HBARTransactionBroadcastParams, HBARTransactionBroadcastResults } from './types';
+import {HBARTransactionBroadcastParams, HBARTransactionBroadcastResults} from './types';
+import {safeLog} from "./utils/safeLogger";
 
 /**
- * Класс, который инициализируется в XxxCoinService для выполнения сетевых запросов.
+ * Класс, который инициализируется в HBARCoinService для выполнения сетевых запросов.
  *
  * Вместо ХХХ указываем тикер.
  * BaseNodeAdapter - это базовый класс который определяет все методы и их типы.
@@ -21,7 +27,7 @@ import { HBARTransactionBroadcastParams, HBARTransactionBroadcastResults } from 
 export class HBARNodeAdapter extends BaseNodeAdapter {
   constructor(
     readonly network: string,
-    readonly name: string = 'NN',
+    readonly name: string = 'QuickNode',
     readonly url: string,
     readonly confirmationLimit: number,
     readonly utxoConfirmationLimit?: number,
@@ -47,7 +53,61 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
     ticker: string,
     hash: string,
   ): Promise<TxByHashResult> {
-    return null;
+    try {
+      await safeLog("info", "Fetching Hedera tx from API", { ticker, hash });
+
+      // Mirror Node API возвращает список транзакций по id
+      const response = await axios.get(`${this.url}/api/v1/transactions/${hash}`);
+
+      if (!response.data?.transactions?.length) {
+        const reason = "Transaction not found";
+        await safeLog("error", "txByHash failed", { ticker, hash, reason });
+        throw new Error(reason);
+      }
+
+      const rawTx = response.data.transactions[0];
+      const transfers = rawTx?.transfers || [];
+
+      const from: FromParams[] = transfers
+          .filter((t: any) => t.amount < 0)
+          .map((t: any) => ({
+            address: t.account,
+            value: Math.abs(t.amount).toString(),
+          }));
+
+      const to: ToParams[] = transfers
+          .filter((t: any) => t.amount > 0)
+          .map((t: any) => ({
+            address: t.account,
+            value: t.amount.toString(),
+          }));
+
+      const status: TxStatus =
+          rawTx.result === "SUCCESS" ? TxStatus.finished :
+              rawTx.result === "PENDING" ? TxStatus.unknown : TxStatus.failed;
+
+      const transaction: Transaction = {
+        hash,
+        ticker,
+        from,
+        to,
+        status,
+        height: rawTx.consensus_timestamp
+            ? Number(rawTx.consensus_timestamp.split(".")[0])
+            : undefined,
+      };
+
+      await safeLog("info", "Transaction parsed successfully", { ticker, hash, status });
+
+      return transaction;
+    } catch (error) {
+      await safeLog("error", "txByHash failed", {
+        ticker,
+        hash,
+        reason: (error as Error).message,
+      });
+      throw error;
+    }
   }
 
   /**
