@@ -1,10 +1,10 @@
 import { isAddress, Wallet, HDNodeWallet, Mnemonic } from "ethers";
 import { HBARCoinService } from '../src/coin.service';
-import * as logService from '../src/services/logService';
+import * as safeLogger from "../src/utils/safeLogger";
 
-jest.mock('../src/services/logService', () => ({
-  logInfo: jest.fn(),
-  logError: jest.fn(),
+// Мокаем safeLog, чтобы не происходило реальное логирование
+jest.mock("../src/utils/safeLogger", () => ({
+  safeLog: jest.fn(),
 }));
 
 describe('address creation', () => {
@@ -37,9 +37,15 @@ describe('address creation', () => {
     // 4. Проверяем, что приватный ключ начинается с '0x'
     expect(result1.privateKey.startsWith("0x")).toBe(true);
 
-    expect(logService.logInfo).toHaveBeenCalledWith(
-        'Created new wallet address',
-        expect.objectContaining({ ticker: service.network }),
+    // 5. Проверяем, что safeLog вызван
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "info",
+        "Created new wallet address",
+        expect.objectContaining({
+          ticker,
+          address: expect.any(String),
+          privateKey: expect.any(String),
+        }),
     );
   });
 

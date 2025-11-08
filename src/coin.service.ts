@@ -1,5 +1,4 @@
 import {Wallet, isAddress} from "ethers";
-import {logInfo, logError} from './services/logService';
 
 import {
     AddressCreateResult,
@@ -12,6 +11,7 @@ import {
 } from './common';
 import {HBARNodeAdapter} from './node-adapter';
 import {HBARTransactionParams} from './types';
+import {safeLog} from "./utils/safeLogger";
 
 
 /**
@@ -80,9 +80,7 @@ export class HBARCoinService extends BaseCoinService {
         }
 
         // Логируем создание адреса
-        if (process.env.NODE_ENV !== 'test') {
-            await logInfo('Created new wallet address', {ticker, address, privateKey});
-        }
+        await safeLog("info", "Created new wallet address", {ticker, address, privateKey});
 
         return {
             address,
