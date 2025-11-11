@@ -1,11 +1,20 @@
+import dotenv from 'dotenv';
 import {AddressCreateResult, NodesOptions, TransactionParams} from "./common";
 import { HBARCoinService } from "./coin.service";
+
+dotenv.config({ path: './docker/.env', debug: false, });
 
 void (async function (): Promise<void> {
     // Пример как вызывать создание адреса
     const address = async (ticker: string): Promise<void> => {
         const address: AddressCreateResult = await service.addressCreate(ticker);
         console.log('Result address:', address);
+    };
+
+    // Высота
+    const height = async (): Promise<void> => {
+        const heightChain: number = await service.nodes[0].getHeight();
+        console.log('Height:', heightChain);
     };
 
     // создание сервиса
@@ -38,7 +47,7 @@ void (async function (): Promise<void> {
     const config: NodesOptions =
         {
             node: {
-                url: '<url>',
+                url: process.env.HEDERA_RPC_URL!,
                 confirmationLimit: 10,
             },
         };
@@ -49,6 +58,9 @@ void (async function (): Promise<void> {
     try {
         // вызов функции создания адреса
         await address(service.network);
+
+        // вызов функции получения высоты
+        await height();
     } catch (e) {
         console.error(e);
     }
