@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import {
     AdapterType,
     BalanceByAddressResult,
@@ -29,6 +29,8 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         readonly network: string,
         readonly name: string = 'QuickNode',
         readonly url: string,
+        readonly rpcUrl: string,
+        readonly mirrorUrl: string,
         readonly confirmationLimit: number,
         readonly utxoConfirmationLimit?: number,
         readonly type = AdapterType.Node,
@@ -184,7 +186,41 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
     /**
      * Функция-обертка для выполнения сетевого запроса.
      */
-    protected request<T, U>(method: 'POST' | 'GET' | 'PUT' | 'DELETE', url: string, data?: U, headers?: Record<string, string | number>): Promise<T> {
-        return null;
+    protected async request<T, U>(method: 'POST' | 'GET' | 'PUT' | 'DELETE', url: string, data?: U, headers?: Record<string, string | number>): Promise<T> {
+        const config: AxiosRequestConfig = {
+            method,
+            url,
+            headers: {
+                "Content-Type": "application/json",
+                ...(headers || {}),
+            },
+        };
+
+        if (data && method !== "GET") {
+            config.data = data;
+        }
+
+        try {
+            const response = await axios.request<T>(config);
+
+            await safeLog("info", "HTTP request successful", {
+                method,
+                url,
+                status: (response.status || "unknown"),
+            });
+
+            return response.data;
+        } catch (error: any) {
+            const reason = error?.response?.data?.error?.message || error.message;
+
+            await safeLog("error", "HTTP request failed", {
+                method,
+                url,
+                reason,
+                status: error?.response?.status || "unknown",
+            });
+
+            throw new Error(`Request failed [${method} ${url}]: ${reason}`);
+        }
     }
 }

@@ -48,6 +48,8 @@ void (async function (): Promise<void> {
         {
             node: {
                 url: process.env.HEDERA_RPC_URL!,
+                rpcUrl: process.env.HEDERA_RPC_URL!,
+                mirrorUrl: process.env.MIRROR_URL_HBAR,
                 confirmationLimit: 10,
             },
         };
