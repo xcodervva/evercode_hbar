@@ -32,7 +32,8 @@ export class HBARCoinService extends BaseCoinService {
         nodes: NodesOptions,
     ): void {
         this.nodes = Object.entries(nodes).map(([name, opts]) => {
-            const url: string = opts.url;
+            const rpcUrl: string = opts.rpcUrl;
+            const mirrorUrl: string = opts.mirrorUrl;
             let headers: Array<{ name: string; value: string }>;
 
             if (opts.headers) {
@@ -48,7 +49,8 @@ export class HBARCoinService extends BaseCoinService {
             return new this.mainNodeAdapter(
                 this.network,
                 name,
-                url,
+                rpcUrl,
+                mirrorUrl,
                 opts.confirmationLimit,
             );
         });
