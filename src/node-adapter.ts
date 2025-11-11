@@ -58,15 +58,15 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             await safeLog("info", "Fetching Hedera tx from API", {ticker, hash});
 
             // Mirror Node API возвращает список транзакций по id
-            const response = await this.request<{ transactions: any[] }, void>( 'GET',`${this.mirrorUrl}/api/v1/transactions/${hash}`);
+            const response = await this.request<{  transactions: any[] }, void>( 'GET',`${this.mirrorUrl}/api/v1/transactions/${hash}`);
 
-            if (!response.data?.transactions?.length) {
+            if (!response.transactions?.length) {
                 const reason = "Transaction not found";
                 await safeLog("error", "txByHash failed", {ticker, hash, reason});
                 throw new Error(reason);
             }
 
-            const rawTx = response.data.transactions[0];
+            const rawTx = response.transactions[0];
             const transfers = rawTx?.transfers || [];
 
             const from: FromParams[] = transfers
@@ -118,7 +118,10 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         let height: number | undefined;
 
         try {
-            const response = await this.request('POST',
+            const response = await this.request<{
+                result: string;
+                error?: { message: string };
+            }, any>('POST',
                 this.rpcUrl, {
                 jsonrpc: "2.0",
                 method: "eth_blockNumber",
@@ -126,17 +129,17 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 id: 1,
             });
 
-            if (response.data?.error) {
+            if (response.error) {
                 throw new Error(
-                    `RPC error: ${response.data.error.message || "Unknown"}`
+                    `RPC error: ${response.error.message || "Unknown"}`
                 );
             }
 
-            height = parseInt(response.data.result, 16); // RPC возвращает hex значение
+            height = parseInt(response.result, 16); // RPC возвращает hex значение
 
             await safeLog("info", "Fetched blockchain height (QuickNode RPC)", {
                 height,
-                url: this.url,
+                url: this.rpcUrl,
             });
 
             if (!height) throw new Error("Не удалось получить высоту сети");
@@ -146,7 +149,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             await safeLog("error", "Failed to fetch blockchain height", {
                 network: this.network,
                 reason: error.message,
-                url: this.url,
+                url: this.rpcUrl,
             });
 
             throw new Error(`Ошибка при получении высоты сети: ${error.message}`);

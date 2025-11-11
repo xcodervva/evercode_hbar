@@ -11,38 +11,43 @@ jest.mock("../src/utils/safeLogger", () => ({
 }));
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-// describe("HBARNodeAdapter.txByHash", () => {
-//   let service: HBARCoinService;
-//
-//   beforeAll(() => {
-//     service = new HBARCoinService();
-//   });
-//
-//   it("formats transaction from API response", async () => {
-//     mockedAxios.get.mockResolvedValue({
-//       data: {
-//         transactions: [
-//           {
-//             result: "SUCCESS",
-//             consensus_timestamp: "1731022000.000000001",
-//             transfers: [
-//               { account: "0.0.1001", amount: -50000000 },
-//               { account: "0.0.2002", amount: 50000000 },
-//             ],
-//           },
-//         ],
-//       },
-//     });
-//
-//     const adapter = new HBARNodeAdapter("testnet", "QuickNode", "https://api.hedera.com", 1);
-//     const tx = await adapter.txByHash(service.network, "0.0.1001@1731022000.000000001");
-//
-//     expect(tx.status).toBe("finished");
-//     expect(tx.from[0].address).toBe("0.0.1001");
-//     expect(tx.to[0].address).toBe("0.0.2002");
-//   });
-// });
-//
+describe("HBARNodeAdapter.txByHash", () => {
+  let service: HBARCoinService;
+
+  beforeAll(() => {
+    service = new HBARCoinService();
+  });
+
+  it("formats transaction from API response", async () => {
+    mockedAxios.request.mockResolvedValue({
+      data: {
+        transactions: [
+          {
+            result: "SUCCESS",
+            consensus_timestamp: "1731022000.000000001",
+            transfers: [
+              { account: "0.0.1001", amount: -50000000 },
+              { account: "0.0.2002", amount: 50000000 },
+            ],
+          },
+        ],
+      },
+    });
+
+    const adapter = new HBARNodeAdapter(
+        "testnet",
+        "QuickNode",
+        "https://rpc.example.com",
+        "https://mirror.example.com",
+        1);
+    const tx = await adapter.txByHash(service.network, "0.0.1001@1731022000.000000001");
+
+    expect(tx.status).toBe("finished");
+    expect(tx.from[0].address).toBe("0.0.1001");
+    expect(tx.to[0].address).toBe("0.0.2002");
+  });
+});
+
 // describe("HBARNodeAdapter.getHeight", () => {
 //   const adapter = new HBARNodeAdapter("testnet", "QuickNode", "https://testnet.mirrornode.hedera.com", 10);
 //
