@@ -48,26 +48,31 @@ describe("HBARNodeAdapter.txByHash", () => {
   });
 });
 
-// describe("HBARNodeAdapter.getHeight", () => {
-//   const adapter = new HBARNodeAdapter("testnet", "QuickNode", "https://testnet.mirrornode.hedera.com", 10);
-//
-//   it("should return height parsed from hex result", async () => {
-//     (axios.post as jest.Mock).mockResolvedValue({
-//       data: { result: "0x10" },
-//     });
-//
-//     const height = await adapter.getHeight();
-//     expect(height).toBe(16);
-//   });
-//
-//   it("should throw error on RPC error", async () => {
-//     (axios.post as jest.Mock).mockResolvedValue({
-//       data: { error: { message: "RPC failure" } },
-//     });
-//
-//     await expect(adapter.getHeight()).rejects.toThrow("RPC error: RPC failure");
-//   });
-// });
+describe("HBARNodeAdapter.getHeight", () => {
+  const adapter = new HBARNodeAdapter(
+      "testnet",
+      "QuickNode",
+      "https://rpc.example.com",
+      "https://mirror.example.com",
+      10);
+
+  it("should return height parsed from hex result", async () => {
+    mockedAxios.request.mockResolvedValue({
+      data: { result: "0x10" },
+    });
+
+    const height = await adapter.getHeight();
+    expect(height).toBe(16);
+  });
+
+  it("should throw error on RPC error", async () => {
+    mockedAxios.request.mockResolvedValue({
+      data: { error: { message: "RPC failure" } },
+    });
+
+    await expect(adapter.getHeight()).rejects.toThrow("RPC error: RPC failure");
+  });
+});
 
 describe("HBARNodeAdapter - request()", () => {
   const adapter = new HBARNodeAdapter(
