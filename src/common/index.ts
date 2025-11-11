@@ -71,7 +71,8 @@ export  type TransactionBroadcastResults = {
 };
 export  type NodesOptions = {
   [name: string]: { // условное обозначение провайдера
-    url: string; // адрес провайдера
+    rpcUrl: string; // адрес провайдера RPC
+    mirrorUrl: string; // адрес провайдера
     headers?: { // объект заголовков, чаще всего используется для передачи авторизации
       [key: string]: string;
     };

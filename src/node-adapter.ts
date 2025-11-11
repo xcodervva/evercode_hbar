@@ -28,7 +28,6 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
     constructor(
         readonly network: string,
         readonly name: string = 'QuickNode',
-        readonly url: string,
         readonly rpcUrl: string,
         readonly mirrorUrl: string,
         readonly confirmationLimit: number,
@@ -59,7 +58,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             await safeLog("info", "Fetching Hedera tx from API", {ticker, hash});
 
             // Mirror Node API возвращает список транзакций по id
-            const response = await axios.get(`${this.url}/api/v1/transactions/${hash}`);
+            const response = await this.request<{ transactions: any[] }, void>( 'GET',`${this.mirrorUrl}/api/v1/transactions/${hash}`);
 
             if (!response.data?.transactions?.length) {
                 const reason = "Transaction not found";
@@ -119,8 +118,8 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         let height: number | undefined;
 
         try {
-            const url = `${this.url}`;
-            const response = await axios.post(url, {
+            const response = await this.request('POST',
+                this.rpcUrl, {
                 jsonrpc: "2.0",
                 method: "eth_blockNumber",
                 params: [],
