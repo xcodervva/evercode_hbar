@@ -162,7 +162,40 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
     async getBlock(
         height: number,
     ): Promise<GetBlockResult> {
-        return null;
+        // Проверка существования блока
+        const currentHeight = await this.getHeight();
+
+        if (height > currentHeight) {
+            throw new Error(`Requested block ${height} not yet available. Current height: ${currentHeight}`);
+        }
+
+        // Запрос к Mirror Node
+        const data = await this.request<{ blocks: any[] }, void>(
+            'GET',
+            `${this.mirrorUrl}/api/v1/blocks/${height}`,
+        );
+
+        const block = data.blocks?.[0];
+
+        if (!block) throw new Error(`Block ${height} not found`);
+
+        // Формируем список транзакций
+        const transactions: Transaction[] = (block.transactions || []).map((tx: any) => ({
+            hash: tx.transaction_id,
+            ticker: "HBAR", // для тестнета Hedera по умолчанию
+            from: [],       // Mirror Node не всегда возвращает участников напрямую
+            to: [],
+            status: tx.result === "SUCCESS" ? "success" : "failed",
+            height: block.number,
+            raw: tx,
+        }));
+
+        return {
+            height: block.number,
+            timestamp: new Date(Number(block.timestamp.from.split(".")[0]) * 1000),
+            transactions,
+            data: block, // сохраняем исходный ответ блока
+        };
     }
 
     /**

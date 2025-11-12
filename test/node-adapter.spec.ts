@@ -2,6 +2,7 @@ import axios from "axios";
 import { HBARNodeAdapter } from '../src/node-adapter';
 import { HBARCoinService } from '../src/coin.service';
 import { safeLog } from "../src/utils/safeLogger";
+import {GetBlockResult} from "../src/common";
 
 jest.mock('axios', () => ({
   request: jest.fn(),
@@ -178,5 +179,70 @@ describe("HBARNodeAdapter - request()", () => {
           status: 400,
         })
     );
+  });
+});
+
+describe("HBARNodeAdapter.getBlock", () => {
+  let adapter: HBARNodeAdapter;
+
+  beforeEach(() => {
+    adapter = new HBARNodeAdapter(
+        "testnet",
+        "QuickNode",
+        "https://testnet.hashio.io/api",
+        "https://testnet.mirrornode.hedera.com",
+        10
+    );
+  });
+
+  it("should return a properly formatted Block with transactions", async () => {
+    jest.spyOn(adapter, "getHeight").mockResolvedValue(500);
+
+    const fakeResponse = {
+      blocks: [
+        {
+          number: 499,
+          hash: "0xabc123",
+          previous_hash: "0xdef456",
+          timestamp: { from: "1699611111.000000000", to: "1699611112.000000000" },
+          transactions: [
+            {
+              transaction_id: "0.0.1001-1699611111-000000001",
+              consensus_timestamp: "1699611111.000000000",
+              result: "SUCCESS",
+              charged_tx_fee: 100,
+            },
+          ],
+        },
+      ],
+    };
+
+    jest.spyOn(adapter as any, "request").mockResolvedValue(fakeResponse);
+
+    const block = await adapter.getBlock(499);
+
+    expect(block.height).toBe(499);
+    expect(block.transactions).toHaveLength(1);
+    expect(block.transactions[0]).toMatchObject({
+      hash: "0.0.1001-1699611111-000000001",
+      ticker: "HBAR",
+      status: "success",
+      height: 499,
+    });
+    expect(block.data).toEqual(fakeResponse.blocks[0]);
+  });
+
+  it("should throw if requested block not yet available", async () => {
+    jest.spyOn(adapter, "getHeight").mockResolvedValue(100);
+    await expect(adapter.getBlock(150)).rejects.toThrow(
+        "Requested block 150 not yet available"
+    );
+  });
+
+  it("should throw if block not found", async () => {
+    jest.spyOn(adapter, "getHeight").mockResolvedValue(1000);
+    jest.spyOn(adapter as any, "request").mockResolvedValue({ blocks: [] });
+
+    await expect(adapter.getBlock(999)).rejects.toThrow("Block 999 not found");
   });
 });
