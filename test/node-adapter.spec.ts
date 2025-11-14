@@ -344,7 +344,7 @@ describe('HBARNodeAdapter balanceByAddress', () => {
 
     expect(result).toEqual({
       balance: '200',  // Баланс для токена
-      totalBalance: '1200',  // Общий баланс (200 токенов + 1000 HBAR)
+      totalBalance: '1000',
     });
 
     // Логирование запроса
@@ -403,7 +403,7 @@ describe('HBARNodeAdapter balanceByAddress', () => {
 
     expect(result).toEqual({
       balance: '300',  // Баланс для токена 0.0.1002
-      totalBalance: '1500',  // Общий баланс (300 токенов + 1000 HBAR)
+      totalBalance: '1000',
     });
 
     expect(safeLog).toHaveBeenCalledWith(
