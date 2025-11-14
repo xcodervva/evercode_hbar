@@ -1,5 +1,5 @@
 import {Wallet, isAddress} from "ethers";
-
+import {Hbar, TransferTransaction} from "@hashgraph/sdk";
 import {
     AddressCreateResult,
     AddressKeyPair,
@@ -194,6 +194,24 @@ export class HBARCoinService extends BaseCoinService {
         ticker: string,
         params: HBARTransactionParams,
     ): Promise<HBARTransactionParams> {
-        return null;
+        await safeLog("info", "Строим транзакцию", { ticker, params });
+
+        // Hedera HBAR не требует UTXO, просто возвращаем валидированные данные.
+        // Но можем подготовить структуру, привести from/to к массивам и т.д.
+
+        const fromArr = Array.isArray(params.from) ? params.from : [params.from];
+        const toArr = Array.isArray(params.to) ? params.to : [params.to];
+
+        const built: HBARTransactionParams = {
+            from: fromArr,
+            to: toArr,
+            fee: params.fee,
+            spent: params.spent ?? {},
+            utxo: params.utxo ?? {},
+        };
+
+        await safeLog("info", "Транзакция построена");
+
+        return built;
     }
 }
