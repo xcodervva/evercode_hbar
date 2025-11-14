@@ -220,7 +220,59 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         ticker: string,
         address: string,
     ): Promise<BalanceByAddressResult> {
-        return null;
+        await safeLog("info", `Запрашиваем баланс для адреса ${address}`, { ticker, address });
+
+        const url = `${this.mirrorUrl}/api/v1/accounts/${address}`;
+
+        try {
+            // Выполняем запрос к Mirror Node
+            const data = await this.request<{ balance: { balance: number; tokens: any[] } }, void>(
+                'GET',
+                url
+            );
+
+            if (!data.balance) {
+                await safeLog("error", `Баланс для адреса ${address} не найден`, { address });
+                throw new Error(`Баланс для адреса ${address} не найден`);
+            }
+
+            let balance = 0;
+            let totalBalance = data.balance.balance;
+
+            // Если тикер HBAR
+            if (ticker === "HBAR") {
+                balance = data.balance.balance;
+            } else {
+                // Ищем токен в списке
+                const tokenBalance = data.balance.tokens.find((token) => token.token_id === ticker);
+
+                if (tokenBalance) {
+                    balance = tokenBalance.balance;
+                } else {
+                    // Если токен не найден, возвращаем 0
+                    balance = 0;
+                }
+            }
+
+            await safeLog("info", `Баланс успешно получен для адреса ${address}`, {
+                ticker,
+                balance,
+                totalBalance,
+            });
+
+            // Возвращаем результат, преобразуя баланс в строки
+            return {
+                balance: balance.toString(),
+                totalBalance: totalBalance.toString(),
+            };
+        } catch (error) {
+            // Логируем ошибку запроса
+            await safeLog("error", `Ошибка при запросе баланса для адреса ${address}`, {
+                ticker,
+                error: error.message,
+            });
+            throw error;
+        }
     }
 
     /**
