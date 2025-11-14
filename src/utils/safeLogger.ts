@@ -1,6 +1,6 @@
 import { logInfo, logError } from "../services/logService";
 
-type LogLevel = "info" | "error";
+type LogLevel = "info" | "error" | "warn";
 interface LogMeta {
     [key: string]: any;
 }

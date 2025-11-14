@@ -162,11 +162,19 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
     async getBlock(
         height: number,
     ): Promise<GetBlockResult> {
+        await safeLog("info", `Запрашивается блок №${height}`);
+
         // Проверка существования блока
         const currentHeight = await this.getHeight();
 
         if (height > currentHeight) {
-            throw new Error(`Requested block ${height} not yet available. Current height: ${currentHeight}`);
+            await safeLog(
+                "warn",
+                `Запрошенный блок ${height} пока недоступен`,
+                { height, currentHeight }
+            );
+
+            throw new Error(`Запрошенный блок ${height} пока недоступен. Текущая высота: ${currentHeight}`);
         }
 
         // Запрос к Mirror Node
@@ -177,7 +185,10 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
 
         const block = data.blocks?.[0];
 
-        if (!block) throw new Error(`Block ${height} not found`);
+        if (!block) {
+            await safeLog("error", `Блок №${height} не найден`);
+            throw new Error(`Блок №${height} не найден`);
+        }
 
         // Формируем список транзакций
         const transactions: Transaction[] = (block.transactions || []).map((tx: any) => ({
@@ -189,6 +200,10 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             height: block.number,
             raw: tx,
         }));
+
+        await safeLog("info", `Блок №${height} успешно получен`, {
+            txCount: transactions.length,
+        });
 
         return {
             height: block.number,

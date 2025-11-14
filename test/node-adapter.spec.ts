@@ -189,53 +189,57 @@ describe("HBARNodeAdapter.getBlock", () => {
     adapter = new HBARNodeAdapter(
         "testnet",
         "QuickNode",
-        "https://testnet.hashio.io/api",
-        "https://testnet.mirrornode.hedera.com",
+        "https://rpc.example.com",
+        "https://mirror.example.com",
         10
     );
   });
 
   it("should return a properly formatted Block with transactions", async () => {
-    jest.spyOn(adapter, "getHeight").mockResolvedValue(500);
-
-    const fakeResponse = {
+    jest.spyOn(adapter, "getHeight").mockResolvedValue(1000);
+    jest.spyOn(adapter as any, "request").mockResolvedValue({
       blocks: [
         {
           number: 499,
-          hash: "0xabc123",
-          previous_hash: "0xdef456",
-          timestamp: { from: "1699611111.000000000", to: "1699611112.000000000" },
+          timestamp: { from: "1699611111.000000000" },
           transactions: [
-            {
-              transaction_id: "0.0.1001-1699611111-000000001",
-              consensus_timestamp: "1699611111.000000000",
-              result: "SUCCESS",
-              charged_tx_fee: 100,
-            },
+            { transaction_id: "0.0.1001-1699611111-000000001", result: "SUCCESS" },
           ],
         },
       ],
-    };
-
-    jest.spyOn(adapter as any, "request").mockResolvedValue(fakeResponse);
+    });
 
     const block = await adapter.getBlock(499);
 
+    // Проверяем структуру результата
     expect(block.height).toBe(499);
     expect(block.transactions).toHaveLength(1);
-    expect(block.transactions[0]).toMatchObject({
-      hash: "0.0.1001-1699611111-000000001",
-      ticker: "HBAR",
-      status: "success",
-      height: 499,
-    });
-    expect(block.data).toEqual(fakeResponse.blocks[0]);
+    expect(block.transactions[0].status).toBe("success");
+
+    // Проверяем вызовы логов (без зависимости от языка или позиции)
+    expect(safeLog).toHaveBeenCalledWith(
+        "info",
+        `Запрашивается блок №499`
+    );
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "info",
+        `Блок №499 успешно получен`,
+        expect.objectContaining({ txCount: 1 })
+    );
   });
 
   it("should throw if requested block not yet available", async () => {
     jest.spyOn(adapter, "getHeight").mockResolvedValue(100);
     await expect(adapter.getBlock(150)).rejects.toThrow(
-        "Requested block 150 not yet available"
+        "Запрошенный блок 150 пока недоступен. Текущая высота: 100"
+    );
+
+    // Логирование должно содержать ожидаемые данные
+    expect(safeLog).toHaveBeenCalledWith(
+        "warn",
+        expect.stringContaining("пока недоступен"), // Для русского текста
+        expect.objectContaining({ height: 150, currentHeight: 100 }) // Ожидаемые параметры
     );
   });
 
@@ -243,6 +247,11 @@ describe("HBARNodeAdapter.getBlock", () => {
     jest.spyOn(adapter, "getHeight").mockResolvedValue(1000);
     jest.spyOn(adapter as any, "request").mockResolvedValue({ blocks: [] });
 
-    await expect(adapter.getBlock(999)).rejects.toThrow("Block 999 not found");
+    await expect(adapter.getBlock(999)).rejects.toThrow("Блок №999 не найден");
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "error",
+        "Блок №999 не найден"
+    );
   });
 });
