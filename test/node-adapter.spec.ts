@@ -2,7 +2,7 @@ import axios from "axios";
 import { HBARNodeAdapter } from '../src/node-adapter';
 import { HBARCoinService } from '../src/coin.service';
 import { safeLog } from "../src/utils/safeLogger";
-import {GetBlockResult} from "../src/common";
+import {BalanceByAddressResult, GetBlockResult} from "../src/common";
 
 jest.mock('axios', () => ({
   request: jest.fn(),
@@ -17,6 +17,9 @@ describe("HBARNodeAdapter.txByHash", () => {
 
   beforeAll(() => {
     service = new HBARCoinService();
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
   });
 
   it("formats transaction from API response", async () => {
@@ -56,6 +59,10 @@ describe("HBARNodeAdapter.getHeight", () => {
       "https://rpc.example.com",
       "https://mirror.example.com",
       10);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it("should return height parsed from hex result", async () => {
     mockedAxios.request.mockResolvedValue({
@@ -193,6 +200,7 @@ describe("HBARNodeAdapter.getBlock", () => {
         "https://mirror.example.com",
         10
     );
+    jest.clearAllMocks();
   });
 
   it("should return a properly formatted Block with transactions", async () => {
@@ -252,6 +260,156 @@ describe("HBARNodeAdapter.getBlock", () => {
     expect(safeLog).toHaveBeenCalledWith(
         "error",
         "Блок №999 не найден"
+    );
+  });
+});
+
+describe('HBARNodeAdapter balanceByAddress', () => {
+  let adapter: HBARNodeAdapter;
+  let service: HBARCoinService;
+
+  beforeEach(() => {
+    service = new HBARCoinService();
+    adapter = new HBARNodeAdapter(
+        'testnet',
+        'QuickNode',
+        "https://rpc.example.com",
+        "https://mirror.example.com",
+        10
+    );
+    jest.clearAllMocks();
+  });
+
+  it('should return balance for HBAR', async () => {
+    const mockData = {
+      balance: {
+        balance: 1000,  // Баланс HBAR
+        tokens: [],
+      },
+    };
+
+    // Мокаем запрос
+    jest.spyOn(adapter as any, 'request').mockResolvedValue(mockData);
+
+    const result: BalanceByAddressResult = await adapter.balanceByAddress(service.network, '0.0.1234');
+
+    expect(result).toEqual({
+      balance: '1000',  // Баланс для HBAR
+      totalBalance: '1000',  // Общий баланс
+    });
+
+    // Проверяем, что логирование было вызвано
+    expect(safeLog).toHaveBeenCalledWith(
+        'info',
+        'Запрашиваем баланс для адреса 0.0.1234',
+        { ticker: 'HBAR', address: '0.0.1234' }
+    );
+  });
+
+  it('should return balance for token', async () => {
+    const mockData = {
+      balance: {
+        balance: 0,
+        tokens: [{ token_id: '0.0.1001', balance: 200 }],
+      },
+    };
+
+    jest.spyOn(adapter as any, 'request').mockResolvedValue(mockData);
+
+    const result: BalanceByAddressResult = await adapter.balanceByAddress('0.0.1001', '0.0.1234');
+
+    expect(result).toEqual({
+      balance: '200',
+      totalBalance: '0',
+    });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "info",
+        "Запрашиваем баланс для адреса 0.0.1234",
+        { ticker: "0.0.1001", address: "0.0.1234" }
+    );
+  });
+
+  it('should return balance for HBAR and token', async () => {
+    const mockData = {
+      balance: {
+        balance: 1000,  // Общий баланс HBAR
+        tokens: [{ token_id: '0.0.1001', balance: 200 }],
+      },
+    };
+
+    jest.spyOn(adapter as any, 'request').mockResolvedValue(mockData);
+
+    const result: BalanceByAddressResult = await adapter.balanceByAddress('0.0.1001', '0.0.1234');
+
+    expect(result).toEqual({
+      balance: '200',  // Баланс для токена
+      totalBalance: '1200',  // Общий баланс (200 токенов + 1000 HBAR)
+    });
+
+    // Логирование запроса
+    expect(safeLog).toHaveBeenCalledWith(
+        'info',
+        'Запрашиваем баланс для адреса 0.0.1234',
+        { ticker: '0.0.1001', address: '0.0.1234' }
+    );
+  });
+
+  it('should throw if balance not found', async () => {
+    const mockData = { balance: null };
+    jest.spyOn(adapter as any, 'request').mockResolvedValue(mockData);
+
+    await expect(adapter.balanceByAddress('HBAR', '0.0.1234')).rejects.toThrow(
+        'Баланс для адреса 0.0.1234 не найден'
+    );
+
+    // Логируем ошибку
+    expect(safeLog).toHaveBeenCalledWith(
+        'error',
+        'Баланс для адреса 0.0.1234 не найден',
+        { address: '0.0.1234' }
+    );
+  });
+
+  it('should throw if error occurs in request', async () => {
+    jest.spyOn(adapter as any, 'request').mockRejectedValue(new Error('Request failed'));
+
+    await expect(adapter.balanceByAddress('HBAR', '0.0.1234')).rejects.toThrow(
+        'Request failed'
+    );
+
+    // Логируем ошибку запроса
+    expect(safeLog).toHaveBeenCalledWith(
+        'error',
+        'Ошибка при запросе баланса для адреса 0.0.1234',
+        { ticker: 'HBAR', error: 'Request failed' }
+    );
+  });
+
+  it('should return total balance for multiple tokens and HBAR', async () => {
+    const mockData = {
+      balance: {
+        balance: 1000,  // Общий баланс HBAR
+        tokens: [
+          { token_id: '0.0.1001', balance: 200 },  // Токен 1
+          { token_id: '0.0.1002', balance: 300 },  // Токен 2
+        ],
+      },
+    };
+
+    jest.spyOn(adapter as any, 'request').mockResolvedValue(mockData);
+
+    const result: BalanceByAddressResult = await adapter.balanceByAddress('0.0.1002', '0.0.1234');
+
+    expect(result).toEqual({
+      balance: '300',  // Баланс для токена 0.0.1002
+      totalBalance: '1500',  // Общий баланс (300 токенов + 1000 HBAR)
+    });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        'info',
+        'Запрашиваем баланс для адреса 0.0.1234',
+        { ticker: '0.0.1002', address: '0.0.1234' }
     );
   });
 });
