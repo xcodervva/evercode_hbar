@@ -282,7 +282,50 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         ticker: string,
         params: HBARTransactionBroadcastParams,
     ): Promise<HBARTransactionBroadcastResults | { error: string }> {
-        return null;
+        await safeLog("info", "Отправка транзакции", {
+            ticker,
+            size: params.signedData.length,
+        });
+
+        try {
+            // RPC запрос — Hedera принимает hex или base64 signed blob
+            const response = await this.request<any, any>(
+                "POST",
+                `${this.rpcUrl}`, // обычно /api/v1/transactions или /v1/transactions
+                {
+                    transaction: params.signedData,
+                }
+            );
+
+            // Возможные поля, откуда Hedera может вернуть hash транзакции
+            const hash =
+                response?.transactionHash ||
+                response?.hash ||
+                response?.receipt?.transactionHash ||
+                null;
+
+            if (!hash) {
+                await safeLog("error", "Не удалось получить hash транзакции", {
+                    response,
+                });
+                return { error: "Хэш транзакции не возвращен по RPC" };
+            }
+
+            await safeLog("info", "Транзакция успешно отправлена", {
+                ticker,
+                hash,
+            });
+
+            return { hash };
+
+        } catch (err: any) {
+            await safeLog("error", "Ошибка отправки транзакции", {
+                ticker,
+                reason: err.message,
+            });
+
+            return { error: err.message ?? "Broadcast failed" };
+        }
     }
 
     /**
