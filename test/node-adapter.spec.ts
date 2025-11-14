@@ -413,3 +413,91 @@ describe('HBARNodeAdapter balanceByAddress', () => {
     );
   });
 });
+
+describe("HBARNodeAdapter txBroadcast", () => {
+  let adapter: HBARNodeAdapter;
+  let service: HBARCoinService;
+
+  beforeEach(() => {
+    adapter = new HBARNodeAdapter(
+        'testnet',
+        'QuickNode',
+        "https://rpc.example.com",
+        "https://mirror.example.com",
+        10
+    );
+    service = new HBARCoinService();
+    jest.clearAllMocks();
+  });
+
+  it("should broadcast transaction successfully", async () => {
+    const mockResponse = {
+      transactionHash: "0xabc123",
+    };
+
+    jest.spyOn(adapter as any, "request").mockResolvedValue(mockResponse);
+
+    const params = { signedData: "deadbeef" };
+    const result = await adapter.txBroadcast(service.network, params);
+
+    expect(result).toEqual({ hash: "0xabc123" });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "info",
+        "Отправка транзакции",
+        expect.objectContaining({
+          ticker: service.network,
+          size: params.signedData.length,
+        })
+    );
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "info",
+        "Транзакция успешно отправлена",
+        expect.objectContaining({ hash: "0xabc123" })
+    );
+  });
+
+  it("should return error if RPC did not return transaction hash", async () => {
+    const mockResponse = {
+      receipt: {}, // нет hash
+    };
+
+    jest.spyOn(adapter as any, "request").mockResolvedValue(mockResponse);
+
+    const params = { signedData: "abcd" };
+    const result = await adapter.txBroadcast(service.network, params);
+
+    expect(result).toEqual({
+      error: "Хэш транзакции не возвращен по RPC",
+    });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "error",
+        "Не удалось получить hash транзакции",
+        expect.objectContaining({
+          response: mockResponse,
+        })
+    );
+  });
+
+  it("should return error on RPC failure", async () => {
+    jest.spyOn(adapter as any, "request").mockRejectedValue(
+        new Error("RPC is down")
+    );
+
+    const params = { signedData: "cccc" };
+    const result = await adapter.txBroadcast(service.network, params);
+
+    expect(result).toEqual({ error: "RPC is down" });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "error",
+        "Ошибка отправки транзакции",
+        expect.objectContaining({
+          ticker: service.network,
+          reason: "RPC is down",
+        })
+    );
+  });
+});
