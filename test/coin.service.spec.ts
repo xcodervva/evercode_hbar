@@ -1,4 +1,5 @@
 import { isAddress, Wallet, HDNodeWallet, Mnemonic } from "ethers";
+import { TransferTransaction, Hbar, PrivateKey } from "@hashgraph/sdk";
 import { HBARCoinService } from '../src/coin.service';
 import { HBARNodeAdapter } from '../src/node-adapter';
 import * as safeLogger from "../src/utils/safeLogger";
@@ -8,6 +9,7 @@ import {FromParams, ToParams} from "../src/common";
 jest.mock("../src/utils/safeLogger", () => ({
   safeLog: jest.fn(),
 }));
+jest.mock("@hashgraph/sdk");
 
 describe('address creation', () => {
   let service: HBARCoinService;
@@ -229,9 +231,35 @@ describe('transaction sign', () => {
 
   beforeAll(() => {
     service = new HBARCoinService();
+    jest.clearAllMocks();
+
+    // Моки SDK
+    (TransferTransaction as any).mockImplementation(() => ({
+      addHbarTransfer: jest.fn(),
+      freeze: jest.fn(),
+      sign: jest.fn().mockResolvedValue({
+        toBytes: () => Buffer.from("signed_tx_mock"),
+        transactionId: { toString: () => "txHashMock" },
+      }),
+    }));
   });
 
-  it('signs', async () => {
+  const params = {
+    from: [{ address: "0.0.111", value: "1000" }],
+    to: [{ address: "0.0.222", value: "1000" }],
+    unsignedTx: "mock_unsigned_tx"
+  };
 
+  const privateKeys = {
+    "0.0.111": "302e0201010420abcdef",
+  };
+
+  it("successfully sign the transaction", async () => {
+    const result = await service.txSign(service.network, privateKeys, params);
+
+    expect(result).toEqual({
+      signedData: expect.any(String),
+      txHash: "txHashMock",
+    });
   });
 });

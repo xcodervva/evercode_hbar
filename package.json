@@ -46,6 +46,7 @@
     "typescript": "^4.3.5"
   },
   "jest": {
+    "preset": "ts-jest",
     "moduleFileExtensions": [
       "js",
       "json",
@@ -67,7 +68,9 @@
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^axios$": "<rootDir>/__mocks__/axios.js"
+      "^axios$": "<rootDir>/__mocks__/axios.js",
+      "^pino$": "pino/browser",
+      "^node:(.*)$": "$1"
     }
   }
 }

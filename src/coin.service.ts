@@ -195,11 +195,6 @@ export class HBARCoinService extends BaseCoinService {
                 throw new Error("Отсутствует список получателей");
             }
 
-            if (!params.spent) {
-                await safeLog("error", "Проверка не пройдена: отсутствует карта spent", { ticker });
-                throw new Error("Отсутствует карта spent");
-            }
-
             // Проверяем что приватный ключ для всех from есть
             for (const fromAddr of fromArr) {
                 const addr = fromAddr.address;
@@ -219,28 +214,18 @@ export class HBARCoinService extends BaseCoinService {
             // Добавляем отправителей (negative amounts)
             for (const fromAddr of fromArr) {
                 const addr = fromAddr.address;
-                const raw = params.spent[addr];
-                let amountStr: string;
-
-                // Если массив — берём первый элемент
-                if (Array.isArray(raw)) {
-                    amountStr = raw[0];
-                }
-                else {
-                    amountStr = raw;
-                }
 
                 // Превращаем в число
-                const amountTiny = Number(amountStr);
+                const amountTiny = Number(fromAddr.value);
 
                 if (!amountTiny || amountTiny <= 0) {
                     await safeLog("error", "Некорректная сумма списания для отправителя", {
                         ticker,
                         addr,
-                        raw,
+                        amountTiny,
                     });
                     throw new Error(
-                        `Некорректная сумма списания для ${addr}: ${raw}`
+                        `Некорректная сумма списания для ${addr}: ${amountTiny}`
                     );
                 }
 
@@ -250,27 +235,16 @@ export class HBARCoinService extends BaseCoinService {
             // Добавляем получателей (positive amounts)
             for (const toAddr of toArr) {
                 const addr = toAddr.address;
-                const raw = params.spent[addr];
-                let amountStr: string;
-
-                // Если массив — берём первый элемент
-                if (Array.isArray(raw)) {
-                    amountStr = raw[0];
-                }
-                else {
-                    amountStr = raw;
-                }
-
-                const amountTiny = Number(amountStr);
+                const amountTiny = Number(toAddr.value);
 
                 if (!amountTiny || amountTiny <= 0) {
                     await safeLog("error", "Некорректная сумма начисления для получателя", {
                         ticker,
                         addr,
-                        raw,
+                        amountTiny,
                     });
                     throw new Error(
-                        `Некорректная сумма начисления для ${addr}: ${raw}`
+                        `Некорректная сумма начисления для ${addr}: ${amountTiny}`
                     );
                 }
 
