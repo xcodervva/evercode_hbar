@@ -1,6 +1,8 @@
 import { isAddress, Wallet, HDNodeWallet, Mnemonic } from "ethers";
 import { HBARCoinService } from '../src/coin.service';
+import { HBARNodeAdapter } from '../src/node-adapter';
 import * as safeLogger from "../src/utils/safeLogger";
+import {FromParams, ToParams} from "../src/common";
 
 // Мокаем safeLog, чтобы не происходило реальное логирование
 jest.mock("../src/utils/safeLogger", () => ({
@@ -126,18 +128,94 @@ describe('address validation', () => {
 });
 
 describe('transaction build', () => {
+  let adapter: HBARNodeAdapter;
   let service: HBARCoinService;
 
   beforeAll(() => {
     service = new HBARCoinService();
+    adapter = new HBARNodeAdapter(
+        'testnet',
+        'QuickNode',
+        "https://rpc.example.com",
+        "https://mirror.example.com",
+        10
+    );
   });
 
-  it('build transaction', async () => {
+  it("should normalize single from/to into arrays", async () => {
+    const params = {
+      from: { address: "0.0.1", value: "100" },
+      to: { address: "0.0.2", value: "100" }
+    };
 
+    const result = await service.txBuild(service.network, params);
+
+    expect(result).toEqual({
+      from: [{ address: "0.0.1", value: "100" }],
+      to: [{ address: "0.0.2", value: "100" }],
+      spent: {},
+      utxo: {}
+    });
+
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "info",
+        "Строим транзакцию",
+        expect.objectContaining({ ticker: service.network })
+    );
+
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "info",
+        "Транзакция построена"
+    );
   });
 
-  it('build errors', async () => {
+  it("should keep arrays if provided", async () => {
+    const params = {
+      from: [
+        { address: "0.0.1", value: "50" },
+        { address: "0.0.3", value: "150" }
+      ],
+      to: [
+        { address: "0.0.2", value: "200" }
+      ]
+    };
 
+    const result = await service.txBuild(service.network, params);
+
+    expect((result.from as FromParams[]).length).toBe(2);
+    expect((result.to as ToParams[]).length).toBe(1);
+  });
+
+  it("should preserve provided fee", async () => {
+    const params = {
+      from: { address: "0.0.1", value: "100" },
+      to: { address: "0.0.2", value: "100" },
+      fee: {
+        networkFee: 5,
+        properties: { speed: "fast" }
+      }
+    };
+
+    const result = await service.txBuild(service.network, params);
+
+    expect(result.fee).toEqual({
+      networkFee: 5,
+      properties: { speed: "fast" }
+    });
+  });
+
+  it("should use provided spent and utxo fields", async () => {
+    const params = {
+      from: { address: "0.0.1", value: "10" },
+      to: { address: "0.0.2", value: "10" },
+      spent: { "0.0.1": ["hash|0"] },
+      utxo: { "0.0.1": ["hash|0"] }
+    };
+
+    const result = await service.txBuild(service.network, params);
+
+    expect(result.spent).toEqual({ "0.0.1": ["hash|0"] });
+    expect(result.utxo).toEqual({ "0.0.1": ["hash|0"] });
   });
 });
 
