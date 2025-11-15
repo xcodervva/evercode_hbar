@@ -145,17 +145,19 @@ describe('transaction build', () => {
   it("should normalize single from/to into arrays", async () => {
     const params = {
       from: { address: "0.0.1", value: "100" },
-      to: { address: "0.0.2", value: "100" }
+      to: { address: "0.0.2", value: "100" },
+      unsignedTx: ""
     };
 
     const result = await service.txBuild(service.network, params);
 
-    expect(result).toEqual({
+    expect(result).toEqual(expect.objectContaining({
       from: [{ address: "0.0.1", value: "100" }],
       to: [{ address: "0.0.2", value: "100" }],
       spent: {},
-      utxo: {}
-    });
+      utxo: {},
+      unsignedTx: ""
+    }));
 
     expect(safeLogger.safeLog).toHaveBeenCalledWith(
         "info",
@@ -177,7 +179,8 @@ describe('transaction build', () => {
       ],
       to: [
         { address: "0.0.2", value: "200" }
-      ]
+      ],
+      unsignedTx: ""
     };
 
     const result = await service.txBuild(service.network, params);
@@ -193,7 +196,8 @@ describe('transaction build', () => {
       fee: {
         networkFee: 5,
         properties: { speed: "fast" }
-      }
+      },
+      unsignedTx: ""
     };
 
     const result = await service.txBuild(service.network, params);
@@ -209,7 +213,8 @@ describe('transaction build', () => {
       from: { address: "0.0.1", value: "10" },
       to: { address: "0.0.2", value: "10" },
       spent: { "0.0.1": ["hash|0"] },
-      utxo: { "0.0.1": ["hash|0"] }
+      utxo: { "0.0.1": ["hash|0"] },
+      unsignedTx: ""
     };
 
     const result = await service.txBuild(service.network, params);

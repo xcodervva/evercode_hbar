@@ -56,6 +56,7 @@ export  type TransactionParams = {
   utxo?: { // опционально, использованные utxo в билде транзакции
     [address: string]: string[]; // объект, где ключ это адрес, а значение это hash utxo в формате `${hash}|$[index}`
   };
+  unsignedTx: string; // base64 или hex сериализованной транзакции
 };
 
 export type NetworkFeeResponse = {
