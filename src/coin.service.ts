@@ -1,5 +1,5 @@
 import {Wallet, isAddress} from "ethers";
-import {Hbar, TransferTransaction} from "@hashgraph/sdk";
+import {Hbar, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
 import {
     AddressCreateResult,
     AddressKeyPair,
@@ -178,7 +178,144 @@ export class HBARCoinService extends BaseCoinService {
         privateKeys: AddressKeyPair,
         params: HBARTransactionParams,
     ): Promise<TxSignResult> {
-        return null;
+        try {
+            await safeLog("info", "Начинаем подпись транзакции", { ticker, params });
+
+            // Приводим к массиву
+            const fromArr = Array.isArray(params.from) ? params.from : [params.from];
+            const toArr = Array.isArray(params.to) ? params.to : [params.to];
+
+            if (!fromArr.length) {
+                await safeLog("error", "Проверка не пройдена: отсутствует from[]", { ticker });
+                throw new Error("Отсутствует список отправителей");
+            }
+
+            if (!toArr.length) {
+                await safeLog("error", "Проверка не пройдена: отсутствует to[]", { ticker });
+                throw new Error("Отсутствует список получателей");
+            }
+
+            if (!params.spent) {
+                await safeLog("error", "Проверка не пройдена: отсутствует карта spent", { ticker });
+                throw new Error("Отсутствует карта spent");
+            }
+
+            // Проверяем что приватный ключ для всех from есть
+            for (const fromAddr of fromArr) {
+                const addr = fromAddr.address;
+
+                if (!privateKeys[addr]) {
+                    await safeLog("error", "Отсутствует приватный ключ для отправителя", {
+                        ticker,
+                        fromAddr,
+                    });
+                    throw new Error(`Отсутствует приватный ключ для отправителя ${fromAddr}`);
+                }
+            }
+
+            // Создаём транзакцию
+            const tx = new TransferTransaction();
+
+            // Добавляем отправителей (negative amounts)
+            for (const fromAddr of fromArr) {
+                const addr = fromAddr.address;
+                const raw = params.spent[addr];
+                let amountStr: string;
+
+                // Если массив — берём первый элемент
+                if (Array.isArray(raw)) {
+                    amountStr = raw[0];
+                }
+                else {
+                    amountStr = raw;
+                }
+
+                // Превращаем в число
+                const amountTiny = Number(amountStr);
+
+                if (!amountTiny || amountTiny <= 0) {
+                    await safeLog("error", "Некорректная сумма списания для отправителя", {
+                        ticker,
+                        addr,
+                        raw,
+                    });
+                    throw new Error(
+                        `Некорректная сумма списания для ${addr}: ${raw}`
+                    );
+                }
+
+                tx.addHbarTransfer(addr, Hbar.fromTinybars(-amountTiny));
+            }
+
+            // Добавляем получателей (positive amounts)
+            for (const toAddr of toArr) {
+                const addr = toAddr.address;
+                const raw = params.spent[addr];
+                let amountStr: string;
+
+                // Если массив — берём первый элемент
+                if (Array.isArray(raw)) {
+                    amountStr = raw[0];
+                }
+                else {
+                    amountStr = raw;
+                }
+
+                const amountTiny = Number(amountStr);
+
+                if (!amountTiny || amountTiny <= 0) {
+                    await safeLog("error", "Некорректная сумма начисления для получателя", {
+                        ticker,
+                        addr,
+                        raw,
+                    });
+                    throw new Error(
+                        `Некорректная сумма начисления для ${addr}: ${raw}`
+                    );
+                }
+
+                tx.addHbarTransfer(addr, Hbar.fromTinybars(amountTiny));
+            }
+
+            // Freeze
+            tx.freeze();
+
+            await safeLog("info", "Транзакция собрана и заморожена", { ticker });
+
+            // Подписываем приватным ключом первого отправителя
+            // (Hedera позволяет мультиподпись, но в простом случае подписывает один)
+            const signerAddr = params.from[0];
+            const privHex = privateKeys[signerAddr];
+
+            const privKey = PrivateKey.fromStringECDSA(privHex);
+
+            await safeLog("info", "Подписываем транзакцию приватным ключом", {
+                ticker,
+                signerAddr,
+            });
+
+            const signedTx = await tx.sign(privKey);
+
+            // Сериализация
+            const signedBytes = Buffer.from(signedTx.toBytes()).toString("hex");
+
+            await safeLog("info", "Транзакция успешно подписана", {
+                ticker,
+                signedBytesLength: signedBytes.length,
+            });
+
+            return {
+                signedData: signedBytes,
+                txHash: signedTx.transactionId?.toString() ?? "",
+            };
+        } catch (err: any) {
+            await safeLog("error", "Ошибка во время подписи транзакции", {
+                ticker,
+                error: err.message,
+                stack: err.stack,
+            });
+            throw err;
+        }
     }
 
     /**
