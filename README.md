@@ -330,3 +330,14 @@ export class XxxBlockBookAdapter extends BaseNodeAdapter {
   }
 }
 ```
+Для получения тестовых данных в файле fast-test.ts необходимо зарегистрировать 2 аккаунта: отправитель и получатель.
+Отправитель - https://portal.hedera.com/register
+в .env.dev
+```bash
+FAST_TEST_FROM_ID=
+FAST_TEST_TO_ID=
+```
+Получатель - https://portal.hedera.com/register
+```bash
+FAST_TEST_TO_ID=
+```

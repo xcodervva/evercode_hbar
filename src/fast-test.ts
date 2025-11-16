@@ -1,5 +1,12 @@
 import dotenv from 'dotenv';
-import {AddressCreateResult, NodesOptions, TransactionParams} from "./common";
+import {
+    AddressCreateResult,
+    AddressKeyPair,
+    NodesOptions,
+    TransactionBroadcastResults,
+    TransactionParams,
+    TxSignResult
+} from "./common";
 import { HBARCoinService } from "./coin.service";
 
 dotenv.config({ path: './docker/.env', debug: false, });
@@ -17,19 +24,27 @@ void (async function (): Promise<void> {
         console.log('Height:', heightChain);
     };
 
+    // Транзакция
+    const transaction = async (ticker: string, keyPair: AddressKeyPair, params: TransactionParams): Promise<void> => {
+        const build: TransactionParams = await service.txBuild(ticker, params);
+        const sign: TxSignResult = await service.txSign(ticker, keyPair, build);
+        const broadcast: TransactionBroadcastResults | { error: string } = await service.nodes[0].txBroadcast(ticker, sign);
+        console.log('Transaction:', broadcast);
+    };
+
     // создание сервиса
     const service: HBARCoinService = new HBARCoinService();
 
     const params: TransactionParams = {
         from: [
             {
-                address: '<address_from>',
+                address: process.env.FAST_TEST_FROM_ID!,
                 value: '0.00005',
             },
         ],
         to: [
             {
-                address: '<address_to>',
+                address: process.env.FAST_TEST_TO_ID!,
                 value: '0.00005',
             },
         ],
@@ -37,10 +52,11 @@ void (async function (): Promise<void> {
             networkFee: 0.01,
             properties: {},
         },
+        unsignedTx: "",
     };
 
     const keyPair = {
-        '<address>': '<private_key>',
+        [process.env.FAST_TEST_FROM_ID!]: process.env.FAST_TEST_FROM_PRIVATE_KEY!,
     };
 
     // конфиг провайдера
@@ -48,7 +64,7 @@ void (async function (): Promise<void> {
         {
             node: {
                 rpcUrl: process.env.HEDERA_RPC_URL!,
-                mirrorUrl: process.env.MIRROR_URL_HBAR,
+                mirrorUrl: process.env.MIRROR_URL_HBAR!,
                 confirmationLimit: 10,
             },
         };
@@ -62,6 +78,9 @@ void (async function (): Promise<void> {
 
         // вызов функции получения высоты
         await height();
+
+        // вызов функции отправки транзакции
+        await transaction(service.network, keyPair, params);
     } catch (e) {
         console.error(e);
     }
