@@ -268,4 +268,10 @@ describe('transaction sign', () => {
         service.txSign(service.network, privateKeys, { ...params, from: [] })
     ).rejects.toThrow("Отсутствует список отправителей");
   });
+
+  it("Error: missing to[]", async () => {
+    await expect(
+        service.txSign(service.network, privateKeys, { ...params, to: [] })
+    ).rejects.toThrow("Отсутствует список получателей");
+  });
 });
