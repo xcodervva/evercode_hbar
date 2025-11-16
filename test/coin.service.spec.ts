@@ -280,4 +280,43 @@ describe('transaction sign', () => {
         service.txSign(service.network, {}, params)
     ).rejects.toThrow(`Отсутствует приватный ключ для отправителя ${params.from[0].address}`);
   });
+
+  it("Error: incorrect write-off amount", async () => {
+    const badParams = {
+      ...params,
+      from: [{ address: "0.0.111", value: "0" }],
+      to: [{ address: "0.0.222", value: "1000" }]
+    };
+
+    await expect(
+        service.txSign(service.network, privateKeys, badParams)
+    ).rejects.toThrow("Некорректная сумма списания");
+  });
+
+  it("Error: incorrect accrual amount", async () => {
+    const badParams = {
+      ...params,
+      to: [
+        { address: "0.0.222", value: "0" } // некорректное начисление
+      ],
+      from: [
+        { address: "0.0.111", value: "1000" } // корректный отправитель
+      ]
+    };
+
+    await expect(
+        service.txSign(service.network, privateKeys, badParams)
+    ).rejects.toThrow("Некорректная сумма начисления");
+  });
+
+  it("checks safeLog calls", async () => {
+    await service.txSign(service.network, privateKeys, params);
+
+    expect(safeLogger.safeLog).toHaveBeenCalled();
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "info",
+        expect.any(String),
+        expect.any(Object),
+    );
+  });
 });
