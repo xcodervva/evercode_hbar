@@ -202,9 +202,9 @@ export class HBARCoinService extends BaseCoinService {
                 if (!privateKeys[addr]) {
                     await safeLog("error", "Отсутствует приватный ключ для отправителя", {
                         ticker,
-                        fromAddr,
+                        addr,
                     });
-                    throw new Error(`Отсутствует приватный ключ для отправителя ${fromAddr}`);
+                    throw new Error(`Отсутствует приватный ключ для отправителя ${addr}`);
                 }
             }
 

@@ -274,4 +274,10 @@ describe('transaction sign', () => {
         service.txSign(service.network, privateKeys, { ...params, to: [] })
     ).rejects.toThrow("Отсутствует список получателей");
   });
+
+  it("Error: missing private key", async () => {
+    await expect(
+        service.txSign(service.network, {}, params)
+    ).rejects.toThrow(`Отсутствует приватный ключ для отправителя ${params.from[0].address}`);
+  });
 });
