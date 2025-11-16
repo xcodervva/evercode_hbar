@@ -262,4 +262,10 @@ describe('transaction sign', () => {
       txHash: "txHashMock",
     });
   });
+
+  it("Error: missing from[]", async () => {
+    await expect(
+        service.txSign(service.network, privateKeys, { ...params, from: [] })
+    ).rejects.toThrow("Отсутствует список отправителей");
+  });
 });
