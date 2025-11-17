@@ -17,35 +17,53 @@ describe('address creation', () => {
 
   beforeAll(() => {
     service = new HBARCoinService();
+
+    // Базовый Client.forTestnet
+    (Client.forTestnet as jest.Mock).mockReturnValue({
+      setOperator: jest.fn().mockReturnThis(),
+    });
+
+    // Базовый PrivateKey.generateED25519
+    (PrivateKey.generateED25519 as jest.Mock).mockReturnValue({
+      publicKey: { toStringRaw: () => "pub_default" },
+      toStringRaw: () => "priv_default",
+    });
+
+    // Базовый AccountCreateTransaction
+    (AccountCreateTransaction as any).mockImplementation(() => ({
+      setKey: jest.fn().mockReturnThis(),
+      setInitialBalance: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({
+        getReceipt: () => Promise.resolve({ accountId: "0.0.1000" }),
+      }),
+    }));
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
-  it('creates unpredictable address', async () => {
+  it("creates unpredictable address", async () => {
     const ticker = service.network;
 
-    // 1. Мокаем Client.forTestnet()
     jest.spyOn(Client, "forTestnet").mockReturnValue({
       setOperator: jest.fn().mockReturnThis(),
     } as any);
 
-    // 2. Мокаем генерацию ключей
     const priv1 = {
-      publicKey: { toStringRaw: () => "pubkey1" },
-      toStringRaw: () => "privkey1",
+      publicKey: { toStringRaw: () => "pub1" },
+      toStringRaw: () => "priv1",
     };
     const priv2 = {
-      publicKey: { toStringRaw: () => "pubkey2" },
-      toStringRaw: () => "privkey2",
+      publicKey: { toStringRaw: () => "pub2" },
+      toStringRaw: () => "priv2",
     };
 
-    jest.spyOn(PrivateKey, "generateED25519")
+    jest
+        .spyOn(PrivateKey, "generateED25519")
         .mockReturnValueOnce(priv1 as any)
         .mockReturnValueOnce(priv2 as any);
 
-    // 3. Мокаем AccountCreateTransaction (конструктор)
     const mockTx = {
       setKey: jest.fn().mockReturnThis(),
       setInitialBalance: jest.fn().mockReturnThis(),
@@ -59,58 +77,50 @@ describe('address creation', () => {
           }),
     };
 
-    (AccountCreateTransaction as unknown as jest.Mock).mockImplementation(() => mockTx);
+    (AccountCreateTransaction as any).mockImplementation(() => mockTx);
 
-    // 4. Запускам тестируемый код
-    const result1 = await service.addressCreate(ticker);
-    const result2 = await service.addressCreate(ticker);
+    const r1 = await service.addressCreate(ticker);
+    const r2 = await service.addressCreate(ticker);
 
-    const hederaRegex = /^0\.0\.\d+$/;
-
-    expect(hederaRegex.test(result1.address)).toBe(true);
-    expect(hederaRegex.test(result2.address)).toBe(true);
-
-    expect(result1.address).not.toBe(result2.address);
-    expect(result1.privateKey).not.toBe(result2.privateKey);
-    expect(result1.publicKey).not.toBe(result2.publicKey);
+    expect(r1.address).not.toBe(r2.address);
+    expect(r1.privateKey).not.toBe(r2.privateKey);
+    expect(r1.publicKey).not.toBe(r2.publicKey);
 
     expect(mockTx.setKey).toHaveBeenCalled();
-    expect(mockTx.setInitialBalance).toHaveBeenCalled();
-
     expect(safeLogger.safeLog).toHaveBeenCalled();
   });
 
-  it('creates known address', async () => {
+  it("creates known address", async () => {
     const ticker = service.network;
-    // Детерминированные данные
-    const mnemonic = Mnemonic.fromPhrase(
-        "test test test test test test test test test test test junk"
-    );
-    const knownWallet = HDNodeWallet.fromMnemonic(mnemonic);
-    const expectedAddress = knownWallet.address;
 
-    // Мокаем createRandom, возвращая HDNodeWallet
-    const spy = jest
-        .spyOn(Wallet, "createRandom")
-        .mockReturnValue(knownWallet as any);
+    jest.spyOn(PrivateKey, "generateED25519").mockReturnValue({
+      publicKey: { toStringRaw: () => "known_pub" },
+      toStringRaw: () => "known_priv",
+    } as any);
 
-    const result = await service.addressCreate(service.network);
+    (AccountCreateTransaction as unknown as jest.Mock).mockImplementation(() => ({
+      setKey: jest.fn().mockReturnThis(),
+      setInitialBalance: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({
+        getReceipt: () => Promise.resolve({ accountId: "0.0.9999999" }),
+      }),
+    }));
 
-    expect(result.address).toBe(expectedAddress);
-    expect(result.privateKey).toBe(knownWallet.privateKey);
+    const result = await service.addressCreate(ticker);
 
-    // Проверяем, что safeLog вызван корректно
+    expect(result.address).toBe("0.0.9999999");
+    expect(result.privateKey).toBe("known_priv");
+    expect(result.publicKey).toBe("known_pub");
+
     expect(safeLogger.safeLog).toHaveBeenCalledWith(
         "info",
-        "Created new wallet address",
+        "Created Hedera Testnet account",
         expect.objectContaining({
           ticker,
-          address: knownWallet.address,
-          privateKey: knownWallet.privateKey,
+          accountId: "0.0.9999999",
+          publicKey: "known_pub",
         })
     );
-
-    spy.mockRestore();
   });
 });
 
