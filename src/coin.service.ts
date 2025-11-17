@@ -1,6 +1,14 @@
 import dotenv from 'dotenv';
 import {Wallet, isAddress} from "ethers";
-import {AccountCreateTransaction, Client, Hbar, HbarUnit, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
+import {
+    AccountCreateTransaction, AccountId,
+    Client,
+    Hbar,
+    HbarUnit,
+    PrivateKey,
+    PublicKey,
+    TransferTransaction
+} from "@hashgraph/sdk";
 import {
     AddressCreateResult,
     AddressKeyPair,
@@ -123,66 +131,58 @@ export class HBARCoinService extends BaseCoinService {
         privateKey: string,
         publicKey: string,
     ): Promise<AddressValidateResult> {
+        // 1. Проверка адреса Hedera
         if (!address) {
             await safeLog("error", "Validation failed: missing address", { ticker });
             return "Адрес отсутствует";
         }
 
+        try {
+            AccountId.fromString(address);
+        } catch (_) {
+            const reason = "Неверный формат Hedera AccountId";
+            await safeLog("error", "Address validation failed", { ticker, address, reason });
+            return reason;
+        }
+
+        // 2. Проверка приватного ключа ED25519
         if (!privateKey) {
             await safeLog("error", "Validation failed: missing privateKey", { ticker, address });
             return "Приватный ключ отсутствует";
         }
 
-        if (!publicKey) {
-            await safeLog("error", "Validation failed: missing publicKey", { ticker, address });
-            return "Публичный ключ отсутствует"
-        };
-
-        if (!isAddress(address)) {
-            const reason = "Неверный формат адреса";
-            await safeLog("error", "Address validation failed", { ticker, address, reason });
+        let priv: PrivateKey;
+        try {
+            priv = PrivateKey.fromString(privateKey);
+        } catch (_) {
+            const reason = "Некорректный формат приватного ключа (ожидается Hedera ED25519)";
+            await safeLog("error", reason, { ticker, privateKey });
             return reason;
         }
 
-        if (!privateKey.startsWith("0x") || privateKey.length !== 66) {
-            await safeLog("error", "Validation failed: invalid privateKey format", {
-                ticker,
-                privateKey,
-            });
-            return "Некорректный формат приватного ключа (ожидается 32 байта в hex)";
+        // 3. Проверка публичного ключа ED25519
+        if (!publicKey) {
+            await safeLog("error", "Validation failed: missing publicKey", { ticker, address });
+            return "Публичный ключ отсутствует";
         }
 
-        // Упрощённая и корректная проверка для Ethers v6
-        if (!publicKey.startsWith("0x") || !/^[0-9a-fA-F]+$/.test(publicKey.slice(2))) {
-            await safeLog("error", "Validation failed: invalid publicKey format", {
-                ticker,
-                publicKey,
-            });
-            return "Некорректный формат публичного ключа (должен быть hex)";
-        }
-
+        let pub: PublicKey;
         try {
-            const walletFromPriv = new Wallet(privateKey);
-
-            if (walletFromPriv.address.toLowerCase() !== address.toLowerCase()) {
-                await safeLog("error", "Validation failed: privateKey does not match address", {
-                    ticker,
-                    address,
-                });
-                return "Приватный ключ не соответствует указанному адресу";
-            }
-
-            // Всё успешно
-            await safeLog("info", "Address validation successful", { ticker, address });
-        } catch(err: any) {
-            await safeLog("error", "Unexpected error during address validation", {
-                ticker,
-                address,
-                error: err.message,
-            });
-            return "Ошибка при проверке приватного ключа";
+            pub = PublicKey.fromString(publicKey);
+        } catch (_) {
+            const reason = "Некорректный формат публичного ключа (ожидается Hedera ED25519)";
+            await safeLog("error", reason, { ticker, publicKey });
+            return reason;
         }
 
+        // 4. Проверка соответствия ключей
+        if (priv.publicKey.toString() !== pub.toString()) {
+            const reason = "Публичный ключ не соответствует приватному ключу";
+            await safeLog("error", reason, { ticker, address });
+            return reason;
+        }
+
+        await safeLog("info", "Address validation successful", { ticker, address });
         return true;
     }
 
