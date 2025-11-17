@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import {Wallet, isAddress} from "ethers";
 import {AccountCreateTransaction, Client, Hbar, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
 import {
@@ -12,7 +13,7 @@ import {
 import {HBARNodeAdapter} from './node-adapter';
 import {HBARTransactionParams} from './types';
 import {safeLog} from "./utils/safeLogger";
-
+dotenv.config({ path: './docker/.env', debug: false, });
 
 /**
  * Основной класс для все монеты.
@@ -73,7 +74,7 @@ export class HBARCoinService extends BaseCoinService {
         const operatorKey = process.env.FAST_TEST_FROM_PRIVATE_KEY!;
 
         if (!operatorId || !operatorKey) {
-            throw new Error("Не установлены OPERATOR_ID или OPERATOR_KEY в .env");
+            throw new Error("Не установлены FAST_TEST_FROM_ID или FAST_TEST_FROM_PRIVATE_KEY в .env");
         }
 
         const client = Client.forTestnet().setOperator(operatorId, operatorKey);

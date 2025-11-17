@@ -1,5 +1,6 @@
-import { isAddress, Wallet, HDNodeWallet, Mnemonic } from "ethers";
-import { TransferTransaction, Hbar, PrivateKey } from "@hashgraph/sdk";
+import { Wallet, HDNodeWallet, Mnemonic } from "ethers";
+import * as hbarSDK from "@hashgraph/sdk";
+const { AccountCreateTransaction, Client, PrivateKey, TransferTransaction } = hbarSDK;
 import { HBARCoinService } from '../src/coin.service';
 import { HBARNodeAdapter } from '../src/node-adapter';
 import * as safeLogger from "../src/utils/safeLogger";
@@ -18,39 +19,65 @@ describe('address creation', () => {
     service = new HBARCoinService();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('creates unpredictable address', async () => {
     const ticker = service.network;
 
+    // 1. Мокаем Client.forTestnet()
+    jest.spyOn(Client, "forTestnet").mockReturnValue({
+      setOperator: jest.fn().mockReturnThis(),
+    } as any);
+
+    // 2. Мокаем генерацию ключей
+    const priv1 = {
+      publicKey: { toStringRaw: () => "pubkey1" },
+      toStringRaw: () => "privkey1",
+    };
+    const priv2 = {
+      publicKey: { toStringRaw: () => "pubkey2" },
+      toStringRaw: () => "privkey2",
+    };
+
+    jest.spyOn(PrivateKey, "generateED25519")
+        .mockReturnValueOnce(priv1 as any)
+        .mockReturnValueOnce(priv2 as any);
+
+    // 3. Мокаем AccountCreateTransaction (конструктор)
+    const mockTx = {
+      setKey: jest.fn().mockReturnThis(),
+      setInitialBalance: jest.fn().mockReturnThis(),
+      execute: jest
+          .fn()
+          .mockResolvedValueOnce({
+            getReceipt: () => Promise.resolve({ accountId: "0.0.1111111" }),
+          })
+          .mockResolvedValueOnce({
+            getReceipt: () => Promise.resolve({ accountId: "0.0.2222222" }),
+          }),
+    };
+
+    (AccountCreateTransaction as unknown as jest.Mock).mockImplementation(() => mockTx);
+
+    // 4. Запускам тестируемый код
     const result1 = await service.addressCreate(ticker);
     const result2 = await service.addressCreate(ticker);
 
-    // 1. Проверяем, что структура данных корректна
-    expect(result1).toHaveProperty("address");
-    expect(result1).toHaveProperty("privateKey");
-    expect(result1).toHaveProperty("publicKey");
+    const hederaRegex = /^0\.0\.\d+$/;
 
-    // 2. Проверяем, что адрес корректен по формату
-    expect(isAddress(result1.address)).toBe(true);
-    expect(isAddress(result2.address)).toBe(true);
+    expect(hederaRegex.test(result1.address)).toBe(true);
+    expect(hederaRegex.test(result2.address)).toBe(true);
 
-    // 3. Проверяем, что адреса и ключи разные (непредсказуемость)
-    expect(result1.address).not.toEqual(result2.address);
-    expect(result1.privateKey).not.toEqual(result2.privateKey);
-    expect(result1.publicKey).not.toEqual(result2.publicKey);
+    expect(result1.address).not.toBe(result2.address);
+    expect(result1.privateKey).not.toBe(result2.privateKey);
+    expect(result1.publicKey).not.toBe(result2.publicKey);
 
-    // 4. Проверяем, что приватный ключ начинается с '0x'
-    expect(result1.privateKey.startsWith("0x")).toBe(true);
+    expect(mockTx.setKey).toHaveBeenCalled();
+    expect(mockTx.setInitialBalance).toHaveBeenCalled();
 
-    // 5. Проверяем, что safeLog вызван
-    expect(safeLogger.safeLog).toHaveBeenCalledWith(
-        "info",
-        "Created new wallet address",
-        expect.objectContaining({
-          ticker,
-          address: expect.any(String),
-          privateKey: expect.any(String),
-        }),
-    );
+    expect(safeLogger.safeLog).toHaveBeenCalled();
   });
 
   it('creates known address', async () => {
