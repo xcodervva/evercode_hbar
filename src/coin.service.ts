@@ -1,5 +1,5 @@
 import {Wallet, isAddress} from "ethers";
-import {Hbar, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
+import {AccountCreateTransaction, Client, Hbar, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
 import {
     AddressCreateResult,
     AddressKeyPair,
@@ -68,26 +68,44 @@ export class HBARCoinService extends BaseCoinService {
     async addressCreate(
         ticker: string,
     ): Promise<AddressCreateResult> {
-        // Генерация кошелька с безопасной энтропией
-        const wallet = Wallet.createRandom();
+        // Загружаем оператора, который оплатит создание аккаунта
+        const operatorId = process.env.FAST_TEST_FROM_ID!;
+        const operatorKey = process.env.FAST_TEST_FROM_PRIVATE_KEY!;
 
-        // Извлекаем необходимые данные
-        const address = wallet.address;
-        const publicKey = wallet.publicKey;
-        const privateKey = wallet.privateKey;
-
-        // Проверяем корректность адреса
-        if (!isAddress(address)) {
-            throw new Error(`Некорректный адрес для тикера ${ticker}: ${address}`);
+        if (!operatorId || !operatorKey) {
+            throw new Error("Не установлены OPERATOR_ID или OPERATOR_KEY в .env");
         }
 
-        // Логируем создание адреса
-        await safeLog("info", "Created new wallet address", {ticker, address, privateKey});
+        const client = Client.forTestnet().setOperator(operatorId, operatorKey);
+
+        // 1. Генерация приватного ключа (ED25519)
+        const privateKey = PrivateKey.generateED25519();
+        const publicKey = privateKey.publicKey;
+
+        // 2. Создание аккаунта
+        const tx = new AccountCreateTransaction()
+            .setKey(publicKey)
+            .setInitialBalance(new Hbar(1)); // минимум 1 HBAR на Testnet
+
+        const txResponse = await tx.execute(client);
+        const receipt = await txResponse.getReceipt(client);
+
+        const accountId = receipt.accountId?.toString();
+
+        if (!accountId) {
+            throw new Error("Ошибка: Hedera не вернула AccountId");
+        }
+
+        await safeLog("info", "Created Hedera Testnet account", {
+            ticker,
+            accountId,
+            publicKey: publicKey.toStringRaw(),
+        });
 
         return {
-            address,
-            privateKey,
-            publicKey,
+            address: accountId,
+            privateKey: privateKey.toStringRaw(),
+            publicKey: publicKey.toStringRaw(),
         };
     }
 
