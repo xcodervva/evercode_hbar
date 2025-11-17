@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import {Wallet, isAddress} from "ethers";
-import {AccountCreateTransaction, Client, Hbar, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
+import {AccountCreateTransaction, Client, Hbar, HbarUnit, PrivateKey, TransferTransaction} from "@hashgraph/sdk";
 import {
     AddressCreateResult,
     AddressKeyPair,
@@ -86,7 +86,7 @@ export class HBARCoinService extends BaseCoinService {
         // 2. Создание аккаунта
         const tx = new AccountCreateTransaction()
             .setKey(publicKey)
-            .setInitialBalance(new Hbar(1)); // минимум 1 HBAR на Testnet
+            .setInitialBalance(Hbar.from(1, HbarUnit.Hbar)); // минимум 1 HBAR на Testnet
 
         const txResponse = await tx.execute(client);
         const receipt = await txResponse.getReceipt(client);

@@ -1,4 +1,3 @@
-import { Wallet, HDNodeWallet, Mnemonic } from "ethers";
 import * as hbarSDK from "@hashgraph/sdk";
 const { AccountCreateTransaction, Client, PrivateKey, TransferTransaction } = hbarSDK;
 import { HBARCoinService } from '../src/coin.service';
