@@ -94,7 +94,7 @@ export class HBARCoinService extends BaseCoinService {
         // 2. Создание аккаунта
         const tx = new AccountCreateTransaction()
             .setKey(publicKey)
-            .setInitialBalance(Hbar.from(1, HbarUnit.Hbar)); // минимум 1 HBAR на Testnet
+            .setInitialBalance(Hbar.from(1, HbarUnit.Hbar)); // минимум 1 HBAR на Mainnet
 
         const txResponse = await tx.execute(client);
         const receipt = await txResponse.getReceipt(client);
@@ -152,8 +152,9 @@ export class HBARCoinService extends BaseCoinService {
         }
 
         let priv: PrivateKey;
+
         try {
-            priv = PrivateKey.fromString(privateKey);
+            priv = PrivateKey.fromStringED25519(privateKey);
         } catch (_) {
             const reason = "Некорректный формат приватного ключа (ожидается Hedera ED25519)";
             await safeLog("error", reason, { ticker, privateKey });
