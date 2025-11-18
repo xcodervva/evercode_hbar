@@ -77,10 +77,10 @@ void (async function (): Promise<void> {
         await address(service.network);
 
         // вызов функции получения высоты
-        await height();
+        //await height();
 
         // вызов функции отправки транзакции
-        await transaction(service.network, keyPair, params);
+        //await transaction(service.network, keyPair, params);
     } catch (e) {
         console.error(e);
     }

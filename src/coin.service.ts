@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import {
-    AccountCreateTransaction, AccountId,
+    AccountBalanceQuery,
+    AccountCreateTransaction,
+    AccountId,
     Client,
     Hbar,
     HbarUnit,
@@ -85,6 +87,19 @@ export class HBARCoinService extends BaseCoinService {
         }
 
         const client = Client.forMainnet().setOperator(operatorId, operatorKey);
+
+        // 0. Проверяем баланс заранее
+        const balance = await new AccountBalanceQuery()
+            .setAccountId(operatorId)
+            .execute(client);
+
+        if (Number(balance.hbars.toTinybars()) <= 0) {
+            await safeLog("warn", "Not enough HBAR for execute this transaction", {
+                ticker,
+                operatorId,
+            });
+            return;
+        }
 
         // 1. Генерация приватного ключа (ED25519)
         const privateKey = PrivateKey.generateED25519();
