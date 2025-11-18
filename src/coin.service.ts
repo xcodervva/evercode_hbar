@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import {Wallet, isAddress} from "ethers";
 import {
     AccountCreateTransaction, AccountId,
     Client,

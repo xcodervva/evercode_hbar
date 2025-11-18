@@ -2,7 +2,7 @@ import axios from "axios";
 import { HBARNodeAdapter } from '../src/node-adapter';
 import { HBARCoinService } from '../src/coin.service';
 import { safeLog } from "../src/utils/safeLogger";
-import {BalanceByAddressResult, GetBlockResult} from "../src/common";
+import {BalanceByAddressResult} from "../src/common";
 
 jest.mock('axios', () => ({
   request: jest.fn(),
