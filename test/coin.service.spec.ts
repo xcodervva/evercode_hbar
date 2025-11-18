@@ -148,7 +148,7 @@ describe('address validation', () => {
     process.env.NODE_ENV = "development"; // разрешаем логирование
 
     // Мокаем PrivateKey.fromString чтобы addressValidate работал корректно
-    (PrivateKey.fromString as jest.Mock).mockImplementation((pk: string) => ({
+    (PrivateKey.fromStringED25519 as jest.Mock).mockImplementation((pk: string) => ({
       toStringRaw: () => pk,
       publicKey: {
         toString: () => pk + "_pub",
