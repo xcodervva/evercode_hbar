@@ -10,6 +10,9 @@ jest.mock('axios', () => ({
 jest.mock("../src/utils/safeLogger", () => ({
   safeLog: jest.fn(),
 }));
+jest.mock("dotenv", () => ({
+  config: jest.fn(() => ({ parsed: {} })),
+}));
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe("HBARNodeAdapter.txByHash", () => {

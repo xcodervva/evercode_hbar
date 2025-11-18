@@ -10,12 +10,17 @@ jest.mock("../src/utils/safeLogger", () => ({
   safeLog: jest.fn(),
 }));
 jest.mock("@hashgraph/sdk");
+jest.mock("dotenv", () => ({
+  config: jest.fn(() => ({ parsed: {} })),
+}));
 
 describe('address creation', () => {
   let service: HBARCoinService;
 
   beforeAll(() => {
     service = new HBARCoinService();
+    process.env.FAST_TEST_FROM_ID = "0.0.1234";
+    process.env.FAST_TEST_FROM_PRIVATE_KEY = "302e020100300506032b6570042204201234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
     // Базовый Client.forTestnet
     (Client.forTestnet as jest.Mock).mockReturnValue({
