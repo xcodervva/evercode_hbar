@@ -85,7 +85,7 @@ export class HBARCoinService extends BaseCoinService {
             throw new Error("Не установлены FAST_TEST_FROM_ID или FAST_TEST_FROM_PRIVATE_KEY в .env");
         }
 
-        const client = Client.forTestnet().setOperator(operatorId, operatorKey);
+        const client = Client.forMainnet().setOperator(operatorId, operatorKey);
 
         // 1. Генерация приватного ключа (ED25519)
         const privateKey = PrivateKey.generateED25519();
