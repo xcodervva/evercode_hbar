@@ -113,8 +113,8 @@ export class HBARCoinService extends BaseCoinService {
 
         return {
             address: accountId,
-            privateKey: privateKey.toStringRaw(),
-            publicKey: publicKey.toStringRaw(),
+            privateKey: privateKey.toString(),
+            publicKey: publicKey.toString(),
         };
     }
 
