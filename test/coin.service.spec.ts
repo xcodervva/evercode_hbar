@@ -1,5 +1,11 @@
 import * as hbarSDK from "@hashgraph/sdk";
-const { AccountCreateTransaction, Client, PublicKey, PrivateKey, TransferTransaction } = hbarSDK;
+const {
+  AccountBalanceQuery,
+  AccountCreateTransaction,
+  Client,
+  PublicKey,
+  PrivateKey,
+  TransferTransaction } = hbarSDK;
 import { HBARCoinService } from '../src/coin.service';
 import { HBARNodeAdapter } from '../src/node-adapter';
 import * as safeLogger from "../src/utils/safeLogger";
@@ -33,6 +39,14 @@ describe('address creation', () => {
       toStringRaw: () => "priv_default",
     });
 
+    // Мокаем AccountBalanceQuery
+    (AccountBalanceQuery as any).mockImplementation(() => ({
+      setAccountId: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({
+        hbars: { toTinybars: () => 100000000 }, // 1 HBAR
+      }),
+    }));
+
     // Базовый AccountCreateTransaction
     (AccountCreateTransaction as any).mockImplementation(() => ({
       setKey: jest.fn().mockReturnThis(),
@@ -50,7 +64,7 @@ describe('address creation', () => {
   it("creates unpredictable address", async () => {
     const ticker = service.network;
 
-    jest.spyOn(Client, "forTestnet").mockReturnValue({
+    jest.spyOn(Client, "forMainnet").mockReturnValue({
       setOperator: jest.fn().mockReturnThis(),
     } as any);
 
