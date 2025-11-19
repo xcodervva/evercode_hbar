@@ -152,6 +152,27 @@ describe('address creation', () => {
         })
     );
   });
+
+  it("does not execute a transaction if there is no HBAR in the operator account", async () => {
+    const ticker = service.network;
+
+    // Баланс 0 — недостаточно средств
+    (AccountBalanceQuery as any).mockImplementationOnce(() => ({
+      setAccountId: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({
+        hbars: { toTinybars: () => 0 },
+      }),
+    }));
+
+    const result = await service.addressCreate(ticker);
+
+    expect(result).toBeUndefined();
+    expect(safeLogger.safeLog).toHaveBeenCalledWith(
+        "warn",
+        "Not enough HBAR for execute this transaction",
+        expect.objectContaining({ ticker })
+    );
+  })
 });
 
 describe('address validation', () => {
