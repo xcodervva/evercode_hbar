@@ -12,10 +12,12 @@ import { HBARCoinService } from "./coin.service";
 dotenv.config({ path: './docker/.env', debug: false, });
 
 void (async function (): Promise<void> {
+    let newAddress: AddressCreateResult | null = null;
+
     // Пример как вызывать создание адреса
     const address = async (ticker: string): Promise<void> => {
-        const address: AddressCreateResult = await service.addressCreate(ticker);
-        console.log('Result address:', address);
+        newAddress = await service.addressCreate(ticker);
+        console.log('Result address:', newAddress);
     };
 
     // Высота
@@ -44,12 +46,12 @@ void (async function (): Promise<void> {
         ],
         to: [
             {
-                address: process.env.FAST_TEST_TO_ID!,
+                address: newAddress.address,
                 value: '0.00005',
             },
         ],
         fee: {
-            networkFee: 0.01,
+            networkFee: 0.001,
             properties: {},
         },
         unsignedTx: "",

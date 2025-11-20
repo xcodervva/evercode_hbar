@@ -335,7 +335,7 @@ export class XxxBlockBookAdapter extends BaseNodeAdapter {
 в .env.dev
 ```bash
 FAST_TEST_FROM_ID=
-FAST_TEST_TO_ID=
+FAST_TEST_FROM_PRIVATE_KEY=
 ```
 Получатель - https://portal.hedera.com/register
 ```bash
