@@ -488,4 +488,23 @@ describe("HBARNodeAdapter txBroadcast", () => {
         expect.objectContaining({ hash: "0xabc123" })
     );
   });
+
+  it("should return error if FAST_TEST_FROM_ID or key not set", async () => {
+    delete process.env.FAST_TEST_FROM_ID;
+
+    const params = { signedData: "abcd" };
+    const result = await adapter.txBroadcast(service.network, params);
+
+    expect(result).toEqual({
+      error: "Не заданы FAST_TEST_FROM_ID или FAST_TEST_FROM_PRIVATE_KEY",
+    });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "error",
+        "Ошибка отправки транзакции",
+        expect.objectContaining({
+          reason: "Не заданы FAST_TEST_FROM_ID или FAST_TEST_FROM_PRIVATE_KEY",
+        })
+    );
+  });
 });
