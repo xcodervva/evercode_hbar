@@ -335,7 +335,7 @@ describe('transaction sign', () => {
     // Моки SDK
     (TransferTransaction as any).mockImplementation(() => ({
       addHbarTransfer: jest.fn(),
-      freeze: jest.fn(),
+      freezeWith: jest.fn().mockReturnThis(),
       sign: jest.fn().mockResolvedValue({
         toBytes: () => Buffer.from("signed_tx_mock"),
         transactionId: { toString: () => "txHashMock" },
