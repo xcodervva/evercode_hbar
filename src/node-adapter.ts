@@ -11,8 +11,20 @@ import {
     TxStatus,
     Transaction,
 } from './common';
-import {HBARTransactionBroadcastParams, HBARTransactionBroadcastResults} from './types';
+import {
+    HBARTransactionBroadcastParams,
+    HBARTransactionBroadcastResults
+} from './types';
 import {safeLog} from "./utils/safeLogger";
+import dotenv from "dotenv";
+import {
+    AccountId,
+    Client,
+    PrivateKey,
+    Transaction as HTransaction,
+} from "@hashgraph/sdk";
+
+dotenv.config({ path: './docker/.env', debug: false, quiet: true });
 
 /**
  * Класс, который инициализируется в HBARCoinService для выполнения сетевых запросов.
@@ -288,32 +300,43 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         });
 
         try {
-            // RPC запрос — Hedera принимает hex или base64 signed blob
-            const response = await this.request<any, any>(
-                "POST",
-                `${this.rpcUrl}`, // обычно /api/v1/transactions или /v1/transactions
-                {
-                    transaction: params.signedData,
-                }
-            );
+            const operatorIdStr = process.env.FAST_TEST_FROM_ID;
+            const operatorKeyStr = process.env.FAST_TEST_FROM_PRIVATE_KEY;
 
-            // Возможные поля, откуда Hedera может вернуть hash транзакции
-            const hash =
-                response?.transactionHash ||
-                response?.hash ||
-                response?.receipt?.transactionHash ||
-                null;
-
-            if (!hash) {
-                await safeLog("error", "Не удалось получить hash транзакции", {
-                    response,
-                });
-                return { error: "Хэш транзакции не возвращен по RPC" };
+            if (!operatorIdStr || !operatorKeyStr) {
+                throw new Error("Не заданы FAST_TEST_FROM_ID или FAST_TEST_FROM_PRIVATE_KEY");
             }
+
+            const operatorId = AccountId.fromString(operatorIdStr);
+            const operatorKey = PrivateKey.fromString(operatorKeyStr);
+            const client = Client.forMainnet().setOperator(operatorId, operatorKey);
+
+            // Проверяем, что входные данные корректные
+            if (!params.signedData) {
+                throw new Error("Отсутствует signedData");
+            }
+
+            // Распаковываем транзакцию (hex или base64)
+            let txBytes: Buffer;
+
+            if (/^[0-9a-fA-F]+$/.test(params.signedData)) {
+                txBytes = Buffer.from(params.signedData, "hex");
+            } else {
+                txBytes = Buffer.from(params.signedData, "base64");
+            }
+
+            const tx = HTransaction.fromBytes(txBytes);
+
+            // Выполняем транзакцию
+            const response = await tx.execute(client);
+            const receipt = await response.getReceipt(client);
+
+            const hash = response.transactionId.toString();
 
             await safeLog("info", "Транзакция успешно отправлена", {
                 ticker,
                 hash,
+                status: receipt.status.toString(),
             });
 
             return { hash };
@@ -322,6 +345,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             await safeLog("error", "Ошибка отправки транзакции", {
                 ticker,
                 reason: err.message,
+                stack: err.stack,
             });
 
             return { error: err.message ?? "Broadcast failed" };

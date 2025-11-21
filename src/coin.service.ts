@@ -22,7 +22,8 @@ import {
 import {HBARNodeAdapter} from './node-adapter';
 import {HBARTransactionParams} from './types';
 import {safeLog} from "./utils/safeLogger";
-dotenv.config({ path: './docker/.env', debug: false, });
+
+dotenv.config({ path: './docker/.env', debug: false, quiet: true });
 
 /**
  * Основной класс для все монеты.
