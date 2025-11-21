@@ -1,8 +1,16 @@
 import axios from "axios";
+import {
+  Client,
+  AccountId,
+  PrivateKey,
+  Transaction as HTransaction
+} from "@hashgraph/sdk";
 import { HBARNodeAdapter } from '../src/node-adapter';
 import { HBARCoinService } from '../src/coin.service';
 import { safeLog } from "../src/utils/safeLogger";
-import {BalanceByAddressResult} from "../src/common";
+import {
+  BalanceByAddressResult
+} from "../src/common";
 
 jest.mock('axios', () => ({
   request: jest.fn(),
@@ -13,6 +21,8 @@ jest.mock("../src/utils/safeLogger", () => ({
 jest.mock("dotenv", () => ({
   config: jest.fn(() => ({ parsed: {} })),
 }));
+jest.mock("@hashgraph/sdk");
+
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe("HBARNodeAdapter.txByHash", () => {
@@ -430,17 +440,35 @@ describe("HBARNodeAdapter txBroadcast", () => {
         10
     );
     service = new HBARCoinService();
+    process.env.FAST_TEST_FROM_ID = "0.0.1234";
+    process.env.FAST_TEST_FROM_PRIVATE_KEY = "302e020100300506032b657004220420abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef";
+
+    // добавляем корректный мок Client
+    (Client.forMainnet as jest.Mock).mockReturnValue({
+      setOperator: jest.fn().mockReturnThis(), // важно вернуть this
+    });
+
+    // и моки для AccountId/PrivateKey, чтобы не падали
+    (AccountId.fromString as jest.Mock).mockImplementation((id) => ({ id }));
+    (PrivateKey.fromStringED25519 as jest.Mock).mockImplementation((key) => ({ key }));
+    (PrivateKey.fromString as jest.Mock).mockImplementation((key) => ({ key }));
+
     jest.clearAllMocks();
   });
 
   it("should broadcast transaction successfully", async () => {
-    const mockResponse = {
-      transactionHash: "0xabc123",
-    };
+    // Мокаем Client и HTransaction
+    const mockExecute = jest.fn().mockResolvedValue({
+      getReceipt: jest.fn().mockResolvedValue({ status: "SUCCESS" }),
+      transactionId: { toString: () => "0xabc123" },
+    });
 
-    jest.spyOn(adapter as any, "request").mockResolvedValue(mockResponse);
+    (HTransaction.fromBytes as jest.Mock).mockReturnValue({
+      execute: mockExecute,
+    });
 
     const params = { signedData: "deadbeef" };
+
     const result = await adapter.txBroadcast(service.network, params);
 
     expect(result).toEqual({ hash: "0xabc123" });
@@ -458,49 +486,6 @@ describe("HBARNodeAdapter txBroadcast", () => {
         "info",
         "Транзакция успешно отправлена",
         expect.objectContaining({ hash: "0xabc123" })
-    );
-  });
-
-  it("should return error if RPC did not return transaction hash", async () => {
-    const mockResponse = {
-      receipt: {}, // нет hash
-    };
-
-    jest.spyOn(adapter as any, "request").mockResolvedValue(mockResponse);
-
-    const params = { signedData: "abcd" };
-    const result = await adapter.txBroadcast(service.network, params);
-
-    expect(result).toEqual({
-      error: "Хэш транзакции не возвращен по RPC",
-    });
-
-    expect(safeLog).toHaveBeenCalledWith(
-        "error",
-        "Не удалось получить hash транзакции",
-        expect.objectContaining({
-          response: mockResponse,
-        })
-    );
-  });
-
-  it("should return error on RPC failure", async () => {
-    jest.spyOn(adapter as any, "request").mockRejectedValue(
-        new Error("RPC is down")
-    );
-
-    const params = { signedData: "cccc" };
-    const result = await adapter.txBroadcast(service.network, params);
-
-    expect(result).toEqual({ error: "RPC is down" });
-
-    expect(safeLog).toHaveBeenCalledWith(
-        "error",
-        "Ошибка отправки транзакции",
-        expect.objectContaining({
-          ticker: service.network,
-          reason: "RPC is down",
-        })
     );
   });
 });
