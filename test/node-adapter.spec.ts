@@ -523,4 +523,24 @@ describe("HBARNodeAdapter txBroadcast", () => {
         })
     );
   });
+
+  it("should handle execute failure", async () => {
+    const mockExecute = jest.fn().mockRejectedValue(new Error("Execution failed"));
+    (HTransaction.fromBytes as jest.Mock).mockReturnValue({
+      execute: mockExecute,
+    });
+
+    const params = { signedData: "bead" };
+    const result = await adapter.txBroadcast(service.network, params);
+
+    expect(result).toEqual({ error: "Execution failed" });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "error",
+        "Ошибка отправки транзакции",
+        expect.objectContaining({
+          reason: "Execution failed",
+        })
+    );
+  });
 });
