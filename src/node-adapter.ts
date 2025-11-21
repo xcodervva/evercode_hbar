@@ -294,12 +294,17 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         ticker: string,
         params: HBARTransactionBroadcastParams,
     ): Promise<HBARTransactionBroadcastResults | { error: string }> {
-        await safeLog("info", "Отправка транзакции", {
-            ticker,
-            size: params.signedData.length,
-        });
-
         try {
+            // Проверяем, что входные данные корректные
+            if (!params.signedData) {
+                throw new Error("Отсутствует signedData");
+            }
+
+            await safeLog("info", "Отправка транзакции", {
+                ticker,
+                size: params.signedData.length,
+            });
+
             const operatorIdStr = process.env.FAST_TEST_FROM_ID;
             const operatorKeyStr = process.env.FAST_TEST_FROM_PRIVATE_KEY;
 

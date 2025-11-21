@@ -507,4 +507,20 @@ describe("HBARNodeAdapter txBroadcast", () => {
         })
     );
   });
+
+  it("should return error if signedData is missing", async () => {
+    const params: any = {};
+
+    const result = await adapter.txBroadcast(service.network, params);
+
+    expect(result).toEqual({ error: "Отсутствует signedData" });
+
+    expect(safeLog).toHaveBeenCalledWith(
+        "error",
+        "Ошибка отправки транзакции",
+        expect.objectContaining({
+          reason: "Отсутствует signedData",
+        })
+    );
+  });
 });
