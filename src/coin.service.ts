@@ -34,6 +34,7 @@ export class HBARCoinService extends BaseCoinService {
     public blockBooks: BaseNodeAdapter[] = [];
     public readonly network = 'HBAR';
     protected mainNodeAdapter = HBARNodeAdapter;
+    public client: Client;
 
     /**
      * Инициализация провайдера(ов).
@@ -86,12 +87,12 @@ export class HBARCoinService extends BaseCoinService {
             throw new Error("Не установлены FAST_TEST_FROM_ID или FAST_TEST_FROM_PRIVATE_KEY в .env");
         }
 
-        const client = Client.forMainnet().setOperator(operatorId, operatorKey);
+        this.client = Client.forMainnet().setOperator(operatorId, operatorKey);
 
         // 0. Проверяем баланс заранее
         const balance = await new AccountBalanceQuery()
             .setAccountId(operatorId)
-            .execute(client);
+            .execute(this.client);
 
         if (Number(balance.hbars.toTinybars()) <= 0) {
             await safeLog("warn", "Not enough HBAR for execute this transaction", {
@@ -110,8 +111,8 @@ export class HBARCoinService extends BaseCoinService {
             .setKey(publicKey)
             .setInitialBalance(Hbar.from(1, HbarUnit.Hbar)); // минимум 1 HBAR на Mainnet
 
-        const txResponse = await tx.execute(client);
-        const receipt = await txResponse.getReceipt(client);
+        const txResponse = await tx.execute(this.client);
+        const receipt = await txResponse.getReceipt(this.client);
 
         const accountId = receipt.accountId?.toString();
 
@@ -289,7 +290,7 @@ export class HBARCoinService extends BaseCoinService {
             }
 
             // Freeze
-            tx.freeze();
+            tx.freezeWith(this.client);
 
             await safeLog("info", "Транзакция собрана и заморожена", { ticker });
 
