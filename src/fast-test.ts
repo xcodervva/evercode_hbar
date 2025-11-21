@@ -13,11 +13,30 @@ dotenv.config({ path: './docker/.env', debug: false, });
 
 void (async function (): Promise<void> {
     let newAddress: AddressCreateResult | null = null;
+    // создание сервиса
+    const service: HBARCoinService = new HBARCoinService();
+
+    // конфиг провайдера
+    const config: NodesOptions =
+        {
+            node: {
+                rpcUrl: process.env.HEDERA_RPC_URL!,
+                mirrorUrl: process.env.MIRROR_URL_HBAR!,
+                confirmationLimit: 10,
+            },
+        };
+
+    // инициализация провайдера
+    service.initNodes(config);
 
     // Пример как вызывать создание адреса
     const address = async (ticker: string): Promise<void> => {
         newAddress = await service.addressCreate(ticker);
         console.log('Result address:', newAddress);
+    };
+
+    const keyPair = {
+        [process.env.FAST_TEST_FROM_ID!]: process.env.FAST_TEST_FROM_PRIVATE_KEY!,
     };
 
     // Высота
@@ -34,55 +53,35 @@ void (async function (): Promise<void> {
         console.log('Transaction:', broadcast);
     };
 
-    // создание сервиса
-    const service: HBARCoinService = new HBARCoinService();
-
-    const params: TransactionParams = {
-        from: [
-            {
-                address: process.env.FAST_TEST_FROM_ID!,
-                value: '0.00005',
-            },
-        ],
-        to: [
-            {
-                address: newAddress.address,
-                value: '0.00005',
-            },
-        ],
-        fee: {
-            networkFee: 0.001,
-            properties: {},
-        },
-        unsignedTx: "",
-    };
-
-    const keyPair = {
-        [process.env.FAST_TEST_FROM_ID!]: process.env.FAST_TEST_FROM_PRIVATE_KEY!,
-    };
-
-    // конфиг провайдера
-    const config: NodesOptions =
-        {
-            node: {
-                rpcUrl: process.env.HEDERA_RPC_URL!,
-                mirrorUrl: process.env.MIRROR_URL_HBAR!,
-                confirmationLimit: 10,
-            },
-        };
-
-    // инициализация провайдера
-    service.initNodes(config);
-
     try {
         // вызов функции создания адреса
         await address(service.network);
 
+        const params: TransactionParams = {
+            from: [
+                {
+                    address: process.env.FAST_TEST_FROM_ID!,
+                    value: '0.00005',
+                },
+            ],
+            to: [
+                {
+                    address: newAddress.address,
+                    value: '0.00005',
+                },
+            ],
+            fee: {
+                networkFee: 0.001,
+                properties: {},
+            },
+            unsignedTx: "",
+        };
+
         // вызов функции получения высоты
-        //await height();
+        await height();
 
         // вызов функции отправки транзакции
-        //await transaction(service.network, keyPair, params);
+        await transaction(service.network, keyPair, params);
     } catch (e) {
         console.error(e);
     }
