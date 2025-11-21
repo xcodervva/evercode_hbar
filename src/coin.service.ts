@@ -250,7 +250,8 @@ export class HBARCoinService extends BaseCoinService {
                 const addr = fromAddr.address;
 
                 // Превращаем в число
-                const amountTiny = Number(fromAddr.value);
+                const factor = Number(process.env.TINYBAR_CONVERSION_FACTOR ?? 100000000);
+                const amountTiny = Math.round(Number(fromAddr.value) * factor);
 
                 if (!amountTiny || amountTiny <= 0) {
                     await safeLog("error", "Некорректная сумма списания для отправителя", {
@@ -269,7 +270,9 @@ export class HBARCoinService extends BaseCoinService {
             // Добавляем получателей (positive amounts)
             for (const toAddr of toArr) {
                 const addr = toAddr.address;
-                const amountTiny = Number(toAddr.value);
+
+                const factor = Number(process.env.TINYBAR_CONVERSION_FACTOR ?? 100000000);
+                const amountTiny = Math.round(Number(toAddr.value) * factor);
 
                 if (!amountTiny || amountTiny <= 0) {
                     await safeLog("error", "Некорректная сумма начисления для получателя", {

@@ -9,7 +9,7 @@ import {
 } from "./common";
 import { HBARCoinService } from "./coin.service";
 
-dotenv.config({ path: './docker/.env', debug: false, });
+dotenv.config({ path: './docker/.env', debug: false, quiet: true });
 
 void (async function (): Promise<void> {
     let newAddress: AddressCreateResult | null = null;
