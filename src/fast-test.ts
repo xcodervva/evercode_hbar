@@ -85,6 +85,10 @@ void (async function (): Promise<void> {
     } catch (e) {
         console.error(e);
     }
+    finally {
+        console.log("Application is shutdown...");
+        process.exit(0);
+    }
 
     // для дебагера
     await new Promise(r => setTimeout(r, 60 * 1000));

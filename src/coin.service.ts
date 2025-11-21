@@ -296,7 +296,7 @@ export class HBARCoinService extends BaseCoinService {
 
             // Подписываем приватным ключом первого отправителя
             // (Hedera позволяет мультиподпись, но в простом случае подписывает один)
-            const signerAddr = params.from[0];
+            const signerAddr = params.from[0].address;
             const privHex = privateKeys[signerAddr];
 
             const privKey = PrivateKey.fromStringECDSA(privHex);
