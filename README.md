@@ -337,7 +337,15 @@ export class XxxBlockBookAdapter extends BaseNodeAdapter {
 FAST_TEST_FROM_ID=
 FAST_TEST_FROM_PRIVATE_KEY=
 ```
-Получатель - https://portal.hedera.com/register
+В корне проекта выполнить команду запуска докера по подъёму базы данных PostgreSQL
 ```bash
-FAST_TEST_TO_ID=
+docker-compose up
+```
+Если в фоном режиме - то
+```bash
+docker-compose up -d
+```
+Для остановки использовать команду
+```bash
+docker-compose down
 ```
