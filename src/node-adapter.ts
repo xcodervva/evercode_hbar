@@ -377,6 +377,15 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         try {
             const response = await axios.request<T>(config);
 
+            if (!response || typeof response.data === "undefined") {
+                await safeLog("warn", "HTTP request returned no data", {
+                    method,
+                    url,
+                    status: response?.status || "unknown",
+                });
+                throw new Error(`Empty response received [${method} ${url}]`);
+            }
+
             await safeLog("info", "HTTP request successful", {
                 method,
                 url,
