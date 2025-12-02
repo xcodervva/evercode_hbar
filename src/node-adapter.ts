@@ -127,8 +127,6 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
      * Функция запроса высоты блокчейна.
      */
     async getHeight(): Promise<GetHeightResult> {
-        let height: number | undefined;
-
         try {
             const response = await this.request<{
                 result: string;
@@ -147,14 +145,18 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 );
             }
 
-            height = parseInt(response.result, 16); // RPC возвращает hex значение
+            // Преобразуем результат в число (hex → int)
+            const height = parseInt(response.result, 16); // RPC возвращает hex значение
 
             await safeLog("info", "Fetched blockchain height (QuickNode RPC)", {
                 height,
                 url: this.rpcUrl,
             });
 
-            if (!height) throw new Error("Не удалось получить высоту сети");
+            // Проверяем, корректен ли результат
+            if (Number.isNaN(height)) {
+                throw new Error(`Invalid block height received: ${response.result}`);
+            }
 
             return height;
         } catch (error: any) {
