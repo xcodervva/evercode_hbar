@@ -128,13 +128,10 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
      */
     async getHeight(): Promise<GetHeightResult> {
         try {
-            const response = await this.request<RpcResponse<string>, any>('POST',
-                this.rpcUrl, {
-                jsonrpc: "2.0",
-                method: "eth_blockNumber",
-                params: [],
-                id: 1,
-            });
+            const response = await this.rpcRequest<string>(
+                'POST',
+                'eth_blockNumber'
+            );
 
             if (response.error) {
                 throw new Error(
@@ -404,5 +401,34 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
 
             throw new Error(`Request failed [${method} ${url}]: ${reason}`);
         }
+    }
+
+    protected async rpcRequest<T>(
+        httpMethod: 'POST' | 'GET' | 'PUT' | 'DELETE',
+        rpcMethod: string,
+        params: unknown[] = []
+    ): Promise<RpcResponse<T>> {
+        const payload = {
+            jsonrpc: "2.0",
+            method: rpcMethod,
+            params,
+            id: 1,
+        };
+
+        const response = await this.request<RpcResponse<T>, typeof payload>(
+            httpMethod,
+            this.rpcUrl,
+            payload
+        );
+
+        if (response.error) {
+            throw new Error(`RPC Error [${rpcMethod}]: ${response.error.message}`);
+        }
+
+        if (typeof response.result === "undefined") {
+            throw new Error(`RPC response missing result for method: ${rpcMethod}`);
+        }
+
+        return response;
     }
 }

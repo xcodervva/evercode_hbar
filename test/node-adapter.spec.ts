@@ -91,7 +91,7 @@ describe("HBARNodeAdapter.getHeight", () => {
       data: { error: { message: "RPC failure" } },
     });
 
-    await expect(adapter.getHeight()).rejects.toThrow("RPC error: RPC failure");
+    await expect(adapter.getHeight()).rejects.toThrow("Ошибка при получении высоты сети: RPC Error [eth_blockNumber]: RPC failure");
   });
 });
 
