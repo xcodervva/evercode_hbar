@@ -133,6 +133,13 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 'eth_blockNumber'
             );
 
+            // 🔍 Проверяем, что result — действительно строка
+            if (typeof response.result !== "string") {
+                throw new Error(
+                    `Invalid RPC response type: expected string, got ${typeof response.result}`
+                );
+            }
+
             // Преобразуем результат в число (hex → int)
             const height = parseInt(response.result, 16); // RPC возвращает hex значение
 
