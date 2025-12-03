@@ -133,12 +133,6 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 'eth_blockNumber'
             );
 
-            if (response.error) {
-                throw new Error(
-                    `RPC error: ${response.error.message || "Unknown"}`
-                );
-            }
-
             // Преобразуем результат в число (hex → int)
             const height = parseInt(response.result, 16); // RPC возвращает hex значение
 
@@ -422,12 +416,24 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         );
 
         if (response.error) {
+            await safeLog("error", "RPC request failed", {
+                method: rpcMethod,
+                url: this.rpcUrl,
+                reason: response.error.message,
+            });
+
             throw new Error(`RPC Error [${rpcMethod}]: ${response.error.message}`);
         }
 
         if (typeof response.result === "undefined") {
             throw new Error(`RPC response missing result for method: ${rpcMethod}`);
         }
+
+        // Успешный результат
+        await safeLog("info", "RPC request successful", {
+            method: rpcMethod,
+            url: this.rpcUrl,
+        });
 
         return response;
     }
