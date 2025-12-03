@@ -9,7 +9,7 @@ import {
     ToParams,
     TxByHashResult,
     TxStatus,
-    Transaction,
+    Transaction, RpcResponse,
 } from './common';
 import {
     HBARTransactionBroadcastParams,
@@ -128,10 +128,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
      */
     async getHeight(): Promise<GetHeightResult> {
         try {
-            const response = await this.request<{
-                result: string;
-                error?: { message: string };
-            }, any>('POST',
+            const response = await this.request<RpcResponse<string>, any>('POST',
                 this.rpcUrl, {
                 jsonrpc: "2.0",
                 method: "eth_blockNumber",

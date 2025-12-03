@@ -117,6 +117,18 @@ export type TxBroadcastResult = TransactionBroadcastResults | {
 
 export type UtxoByAddressResult = Record<string, unknown>[];
 
+// Общий тип RPC-ответа
+export interface RpcResponse<T> {
+  jsonrpc: string;
+  id: number | string;
+  result?: T;
+  error?: {
+    code?: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
 // Базовый класс для coin services
 export abstract class BaseCoinService {
   abstract readonly network: string;
