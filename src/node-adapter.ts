@@ -24,6 +24,8 @@ import {
     Transaction as HTransaction,
 } from "@hashgraph/sdk";
 
+import { sanitizeUrl } from "./utils/sanitizeUrl";
+
 dotenv.config({ path: './docker/.env', debug: false, quiet: true });
 
 /**
@@ -145,7 +147,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
 
             await safeLog("info", "Fetched blockchain height (QuickNode RPC)", {
                 height,
-                url: this.rpcUrl,
+                url: sanitizeUrl(this.rpcUrl),
             });
 
             // Проверяем, корректен ли результат
@@ -158,7 +160,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             await safeLog("error", "Failed to fetch blockchain height", {
                 network: this.network,
                 reason: error.message,
-                url: this.rpcUrl,
+                url: sanitizeUrl(this.rpcUrl),
             });
 
             throw new Error(`Ошибка при получении высоты сети: ${error.message}`);
