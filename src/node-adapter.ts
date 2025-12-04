@@ -188,7 +188,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             `${this.mirrorUrl}/api/v1/blocks/${height}`,
         );
 
-        const block = data.blocks?.[0];
+        const block = Array.isArray(data.blocks) ? data.blocks[0] : undefined;
 
         if (!block) {
             await safeLog("error", `Блок №${height} не найден`);
