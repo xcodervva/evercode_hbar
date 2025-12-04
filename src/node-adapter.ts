@@ -101,9 +101,12 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 from,
                 to,
                 status,
-                height: rawTx.consensus_timestamp
-                    ? Number(rawTx.consensus_timestamp.split(".")[0])
-                    : undefined,
+                timestamp: (() => {
+                    const ts = rawTx.consensus_timestamp;
+                    return typeof ts === "string" && ts.includes(".")
+                        ? new Date(Number(ts.split(".")[0]) * 1000)
+                        : undefined;
+                })(),
             };
 
             await safeLog("info", "Transaction parsed successfully", {ticker, hash, status});
@@ -209,11 +212,22 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 status = TxStatus.unknown; // ожидает подтверждения
             }
 
+            // Извлекаем участников перевода
+            const transfers = tx.transfers || tx.token_transfers || [];
+            const from: FromParams[] = [];
+            const to: ToParams[] = [];
+
+            for (const tr of transfers) {
+                if (typeof tr.amount !== "number" || !tr.account) continue;
+                if (tr.amount < 0) from.push(tr.account);
+                if (tr.amount > 0) to.push(tr.account);
+            }
+
             return {
                 hash: tx.transaction_id,
                 ticker: "HBAR", // для тестнета Hedera по умолчанию
-                from: [],       // Mirror Node не всегда возвращает участников напрямую
-                to: [],
+                from,       // Mirror Node не всегда возвращает участников напрямую
+                to,
                 status,
                 height: block.number,
                 raw: tx,
