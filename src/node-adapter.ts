@@ -196,15 +196,29 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         }
 
         // Формируем список транзакций
-        const transactions: Transaction[] = (block.transactions || []).map((tx: any) => ({
-            hash: tx.transaction_id,
-            ticker: "HBAR", // для тестнета Hedera по умолчанию
-            from: [],       // Mirror Node не всегда возвращает участников напрямую
-            to: [],
-            status: tx.result === "SUCCESS" ? TxStatus.finished : TxStatus.failed,
-            height: block.number,
-            raw: tx,
-        }));
+        const transactions: Transaction[] = (block.transactions || []).map((tx: any) => {
+            const confirmations = tx.confirmations ?? 0;
+
+            let status: TxStatus;
+
+            if (tx.result !== "SUCCESS") {
+                status = TxStatus.failed;
+            } else if (confirmations >= this.confirmationLimit) {
+                status = TxStatus.finished; // транзакция подтверждена
+            } else {
+                status = TxStatus.unknown; // ожидает подтверждения
+            }
+
+            return {
+                hash: tx.transaction_id,
+                ticker: "HBAR", // для тестнета Hedera по умолчанию
+                from: [],       // Mirror Node не всегда возвращает участников напрямую
+                to: [],
+                status,
+                height: block.number,
+                raw: tx,
+            }
+        });
 
         await safeLog("info", `Блок №${height} успешно получен`, {
             txCount: transactions.length,

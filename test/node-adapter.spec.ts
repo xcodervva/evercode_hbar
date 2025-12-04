@@ -224,7 +224,11 @@ describe("HBARNodeAdapter.getBlock", () => {
           number: 499,
           timestamp: { from: "1699611111.000000000" },
           transactions: [
-            { transaction_id: "0.0.1001-1699611111-000000001", result: "SUCCESS" },
+            {
+              transaction_id: "0.0.1001-1699611111-000000001",
+              result: "SUCCESS",
+              confirmations: 10
+            },
           ],
         },
       ],
@@ -246,6 +250,42 @@ describe("HBARNodeAdapter.getBlock", () => {
     expect(safeLog).toHaveBeenCalledWith(
         "info",
         `Блок №499 успешно получен`,
+        expect.objectContaining({ txCount: 1 })
+    );
+  });
+
+  it("should set transaction status to 'unknown' if confirmations are below the limit", async () => {
+    // Подготовка моков
+    jest.spyOn(adapter, "getHeight").mockResolvedValue(1000);
+    jest.spyOn(adapter as any, "request").mockResolvedValue({
+      blocks: [
+        {
+          number: 500,
+          timestamp: { from: "1699612222.000000000" },
+          transactions: [
+            {
+              transaction_id: "0.0.2001-1699612222-000000001",
+              result: "SUCCESS",
+              confirmations: 5, // меньше порога (10)
+            },
+          ],
+        },
+      ],
+    });
+
+    // Вызов метода
+    const block = await adapter.getBlock(500);
+
+    // Проверки
+    expect(block.height).toBe(500);
+    expect(block.transactions).toHaveLength(1);
+    expect(block.transactions[0].status).toBe("unknown");
+
+    // Проверяем, что логи записались корректно
+    expect(safeLog).toHaveBeenCalledWith("info", `Запрашивается блок №500`);
+    expect(safeLog).toHaveBeenCalledWith(
+        "info",
+        `Блок №500 успешно получен`,
         expect.objectContaining({ txCount: 1 })
     );
   });
