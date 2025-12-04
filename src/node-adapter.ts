@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, {AxiosRequestConfig} from "axios";
 import {
     AdapterType,
     BalanceByAddressResult,
@@ -6,25 +6,19 @@ import {
     FromParams,
     GetBlockResult,
     GetHeightResult,
+    MirrorNodeBlocksResponse,
+    RpcResponse,
     ToParams,
+    Transaction,
     TxByHashResult,
     TxStatus,
-    Transaction, RpcResponse,
 } from './common';
-import {
-    HBARTransactionBroadcastParams,
-    HBARTransactionBroadcastResults
-} from './types';
+import {HBARTransactionBroadcastParams, HBARTransactionBroadcastResults} from './types';
 import {safeLog} from "./utils/safeLogger";
 import dotenv from "dotenv";
-import {
-    AccountId,
-    Client,
-    PrivateKey,
-    Transaction as HTransaction,
-} from "@hashgraph/sdk";
+import {AccountId, Client, PrivateKey, Transaction as HTransaction,} from "@hashgraph/sdk";
 
-import { sanitizeUrl } from "./utils/sanitizeUrl";
+import {sanitizeUrl} from "./utils/sanitizeUrl";
 
 dotenv.config({ path: './docker/.env', debug: false, quiet: true });
 
@@ -189,7 +183,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
         }
 
         // Запрос к Mirror Node
-        const data = await this.request<{ blocks: any[] }, void>(
+        const data = await this.request<MirrorNodeBlocksResponse, void>(
             'GET',
             `${this.mirrorUrl}/api/v1/blocks/${height}`,
         );
@@ -207,7 +201,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             ticker: "HBAR", // для тестнета Hedera по умолчанию
             from: [],       // Mirror Node не всегда возвращает участников напрямую
             to: [],
-            status: tx.result === "SUCCESS" ? "success" : "failed",
+            status: tx.result === "SUCCESS" ? TxStatus.finished : TxStatus.failed,
             height: block.number,
             raw: tx,
         }));
@@ -220,7 +214,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             height: block.number,
             timestamp: new Date(Number(block.timestamp.from.split(".")[0]) * 1000),
             transactions,
-            data: block, // сохраняем исходный ответ блока
+            data: block as unknown as Record<string, unknown>, // сохраняем исходный ответ блока
         };
     }
 

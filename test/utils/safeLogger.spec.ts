@@ -1,7 +1,7 @@
-import { safeLog } from "../src/utils/safeLogger";
-import * as logService from "../src/services/logService";
+import { safeLog } from "../../src/utils/safeLogger";
+import * as logService from "../../src/services/logService";
 
-jest.mock("../src/services/logService", () => ({
+jest.mock("../../src/services/logService", () => ({
     logInfo: jest.fn(),
     logError: jest.fn(),
 }));

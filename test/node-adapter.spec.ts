@@ -235,7 +235,7 @@ describe("HBARNodeAdapter.getBlock", () => {
     // Проверяем структуру результата
     expect(block.height).toBe(499);
     expect(block.transactions).toHaveLength(1);
-    expect(block.transactions[0].status).toBe("success");
+    expect(block.transactions[0].status).toBe("finished");
 
     // Проверяем вызовы логов (без зависимости от языка или позиции)
     expect(safeLog).toHaveBeenCalledWith(

@@ -129,6 +129,21 @@ export interface RpcResponse<T> {
   };
 }
 
+export interface MirrorNodeBlock {
+  hash: string;
+  height: number;
+  timestamp: {
+    from: string;
+    to: string;
+  };
+  transactions: Transaction[];
+  number: number;
+}
+
+export interface MirrorNodeBlocksResponse {
+  blocks: MirrorNodeBlock[];
+}
+
 // Базовый класс для coin services
 export abstract class BaseCoinService {
   abstract readonly network: string;
