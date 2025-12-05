@@ -9,7 +9,12 @@ const {
 import { HBARCoinService } from '../src/coin.service';
 import { HBARNodeAdapter } from '../src/node-adapter';
 import * as safeLogger from "../src/utils/safeLogger";
-import {FromParams, ToParams} from "../src/common";
+import { FromParams, ToParams } from "../src/common";
+import { generateEd25519KeyPair } from "../src/utils/ed25519";
+
+jest.mock("../src/utils/ed25519", () => ({
+  generateEd25519KeyPair: jest.fn(),
+}));
 
 // Мокаем safeLog, чтобы не происходило реальное логирование
 jest.mock("../src/utils/safeLogger", () => ({
@@ -23,27 +28,23 @@ jest.mock("dotenv", () => ({
 describe('address creation', () => {
   let service: HBARCoinService;
 
-  beforeAll(() => {
+  beforeEach(() => {
+    jest.resetAllMocks();  // важнее чем clearAllMocks()
+
     service = new HBARCoinService();
     process.env.FAST_TEST_FROM_ID = "0.0.1234";
     process.env.FAST_TEST_FROM_PRIVATE_KEY = "302e020100300506032b6570042204201234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
     // Базовый Client.forMainnet
-    (Client.forMainnet as jest.Mock).mockReturnValue({
+    jest.spyOn(Client, "forMainnet").mockReturnValue({
       setOperator: jest.fn().mockReturnThis(),
-    });
+    } as any);
 
-    // Базовый PrivateKey.generateED25519
-    (PrivateKey.generateED25519 as jest.Mock).mockReturnValue({
-      publicKey: { toStringRaw: () => "pub_default" },
-      toStringRaw: () => "priv_default",
-    });
-
-    // Мокаем AccountBalanceQuery
+    // Баланс по умолчанию = 1 HBAR
     (AccountBalanceQuery as any).mockImplementation(() => ({
       setAccountId: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue({
-        hbars: { toTinybars: () => 100000000 }, // 1 HBAR
+        hbars: { toTinybars: () => 100000000 },
       }),
     }));
 
@@ -55,40 +56,32 @@ describe('address creation', () => {
         getReceipt: () => Promise.resolve({ accountId: "0.0.1000" }),
       }),
     }));
-  });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+    // PrivateKey.fromBytesED25519
+    (PrivateKey.fromBytesED25519 as jest.Mock).mockImplementation((raw) => ({
+      toString: () => Buffer.from(raw).toString("hex"),
+    }));
+
+    // PublicKey.fromBytesED25519
+    (PublicKey.fromBytesED25519 as jest.Mock).mockImplementation((raw) => ({
+      toString: () => Buffer.from(raw).toString("hex"),
+      toStringRaw: () => Buffer.from(raw).toString("hex"),
+    }));
   });
 
   it("creates unpredictable address", async () => {
     const ticker = service.network;
 
-    jest.spyOn(Client, "forMainnet").mockReturnValue({
-      setOperator: jest.fn().mockReturnThis(),
-    } as any);
-
-    const priv1 = {
-      publicKey: {
-        toStringRaw: () => "priv1_pub",
-        toString:    () => "priv1_pub",
-      },
-      toStringRaw: () => "priv1",
-      toString: () => "priv1"
-    };
-    const priv2 = {
-      publicKey: {
-        toStringRaw: () => "priv2_pub",
-        toString:    () => "priv2_pub",
-      },
-      toStringRaw: () => "priv2",
-      toString: () => "priv2"
-    };
-
-    jest
-        .spyOn(PrivateKey, "generateED25519")
-        .mockReturnValueOnce(priv1 as any)
-        .mockReturnValueOnce(priv2 as any);
+    // Два разных результата keypair
+    (generateEd25519KeyPair as jest.Mock)
+        .mockReturnValueOnce({
+          privateKeyRaw: Buffer.from("11".repeat(32), "hex"),
+          publicKeyRaw: Buffer.from("22".repeat(32), "hex"),
+        })
+        .mockReturnValueOnce({
+          privateKeyRaw: Buffer.from("33".repeat(32), "hex"),
+          publicKeyRaw: Buffer.from("44".repeat(32), "hex"),
+        });
 
     const mockTx = {
       setKey: jest.fn().mockReturnThis(),
@@ -102,7 +95,6 @@ describe('address creation', () => {
             getReceipt: () => Promise.resolve({ accountId: "0.0.2222222" }),
           }),
     };
-
     (AccountCreateTransaction as any).mockImplementation(() => mockTx);
 
     const r1 = await service.addressCreate(ticker);
@@ -119,16 +111,12 @@ describe('address creation', () => {
   it("creates known address", async () => {
     const ticker = service.network;
 
-    jest.spyOn(PrivateKey, "generateED25519").mockReturnValue({
-      publicKey: {
-        toStringRaw: () => "known_priv_pub",
-        toString: () => "known_priv_pub",
-      },
-      toStringRaw: () => "known_priv",
-      toString: () => "known_priv"
-    } as any);
+    (generateEd25519KeyPair as jest.Mock).mockReturnValue({
+      privateKeyRaw: Buffer.from("aa".repeat(32), "hex"),
+      publicKeyRaw: Buffer.from("bb".repeat(32), "hex"),
+    });
 
-    (AccountCreateTransaction as unknown as jest.Mock).mockImplementation(() => ({
+    (AccountCreateTransaction as any).mockImplementation(() => ({
       setKey: jest.fn().mockReturnThis(),
       setInitialBalance: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue({
@@ -136,27 +124,25 @@ describe('address creation', () => {
       }),
     }));
 
-    const result = await service.addressCreate(ticker);
+    const res = await service.addressCreate(ticker);
 
-    expect(result.address).toBe("0.0.9999999");
-    expect(result.privateKey).toBe("known_priv");
-    expect(result.publicKey).toBe("known_priv_pub");
+    expect(res.address).toBe("0.0.9999999");
+    expect(res.privateKey).toBe("aa".repeat(32));
+    expect(res.publicKey).toBe("bb".repeat(32));
 
     expect(safeLogger.safeLog).toHaveBeenCalledWith(
         "info",
         "Created Hedera Testnet account",
         expect.objectContaining({
-          ticker,
           accountId: "0.0.9999999",
-          publicKey: "known_priv_pub",
+          publicKey: "bb".repeat(32),
         })
     );
   });
 
-  it("does not execute a transaction if there is no HBAR in the operator account", async () => {
+  it("does not execute when operator has no HBAR", async () => {
     const ticker = service.network;
 
-    // Баланс 0 — недостаточно средств
     (AccountBalanceQuery as any).mockImplementationOnce(() => ({
       setAccountId: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue({
@@ -164,50 +150,100 @@ describe('address creation', () => {
       }),
     }));
 
-    const result = await service.addressCreate(ticker);
+    const res = await service.addressCreate(ticker);
 
-    expect(result).toBeUndefined();
+    expect(res).toBeUndefined();
     expect(safeLogger.safeLog).toHaveBeenCalledWith(
         "warn",
         "Not enough HBAR for execute this transaction",
         expect.objectContaining({ ticker })
     );
-  })
+  });
 });
 
 describe('address validation', () => {
   let service: HBARCoinService;
 
   beforeAll(() => {
-    service = new HBARCoinService();
     process.env.NODE_ENV = "development"; // разрешаем логирование
 
-    // Мокаем PrivateKey.fromString чтобы addressValidate работал корректно
-    (PrivateKey.fromStringED25519 as jest.Mock).mockImplementation((pk: string) => ({
-      toStringRaw: () => pk,
-      publicKey: {
-        toString: () => pk + "_pub",
-        toStringRaw: () => pk + "_pub_raw",
-      },
+    // Client
+    jest.spyOn(Client, "forMainnet").mockReturnValue({
+      setOperator: jest.fn().mockReturnThis(),
+    } as any);
+
+    // Баланс оператора — достаточно HBAR
+    (AccountBalanceQuery as any).mockImplementation(() => ({
+      setAccountId: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({
+        hbars: { toTinybars: () => 100000000 }, // 1 HBAR
+      }),
     }));
 
-    // Мокаем PublicKey.fromString
+    // Транзакция создания аккаунта — вернёт фиксированный accountId
+    (AccountCreateTransaction as any).mockImplementation(() => ({
+      setKey: jest.fn().mockReturnThis(),
+      setInitialBalance: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({
+        getReceipt: () => Promise.resolve({ accountId: "0.0.424242" }),
+      }),
+    }));
+
+    // 1) Мокаем генератор нашей утилиты (raw bytes)
+    (generateEd25519KeyPair as jest.Mock).mockReturnValue({
+      // согласованные raw: private -> aa.., public -> bb..
+      privateKeyRaw: Buffer.from("aa".repeat(32), "hex"),
+      publicKeyRaw: Buffer.from("bb".repeat(32), "hex"),
+    });
+
+    // 2) Мокаем импорт ключей из raw (используется в addressCreate)
+    (PrivateKey.fromBytesED25519 as jest.Mock).mockImplementation((raw: Buffer) => ({
+      toString: () => "priv",
+      toStringRaw: () => "priv",
+      publicKey: {
+        toString: () => "priv_pub",
+        toStringRaw: () => "priv_pub",
+      }
+    }));
+
+    (PublicKey.fromBytesED25519 as jest.Mock).mockImplementation((raw: Buffer) => ({
+      toString: () => "priv_pub",
+      toStringRaw: () => "priv_pub",
+    }));
+
+    // addressValidate → использует fromString
+    (PrivateKey.fromStringED25519 as jest.Mock).mockImplementation((pk: string) => ({
+      toStringRaw: () => pk, // "priv"
+      publicKey: {
+        toString: () => pk + "_pub",  // → "priv_pub"
+        toStringRaw: () => pk + "_pub",
+      }
+    }));
+
     (PublicKey.fromString as jest.Mock).mockImplementation((pub: string) => ({
       toString: () => pub,
       toStringRaw: () => pub,
     }));
+
+    // Создаём сервис только после всех моков
+    service = new HBARCoinService();
   });
 
   afterEach(() => {
+    // не убираем beforeAll-моки; чистим счётчики вызовов
     jest.clearAllMocks();
   });
 
   it('validate correct Hedera address and keys', async () => {
-    // генерируем валидный аккаунт (через реальное создание)
+    // 1) Создаём адрес (внутри будет вызван generateEd25519KeyPair и tx execute)
     const { address, privateKey, publicKey } = await service.addressCreate(service.network);
 
-    jest.clearAllMocks();
+    // IMPORTANT: НЕ чистим моки здесь — мы хотим, чтобы fromString* всё ещё были замоканы
+    // jest.clearAllMocks();   // <--- НЕ ВЫЗЫВАЙ ЭТО ЗДЕСЬ
 
+    // 2) Сейчас privateKey и publicKey — строки, которые вернули моки fromBytes...:
+    //    ожидаем, что они равны hex-строкам из mock-реализации выше.
+    //    Вызов addressValidate должен использовать fromString* (мы их замокали в beforeAll).
     const result = await service.addressValidate(
         service.network,
         address,

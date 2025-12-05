@@ -22,6 +22,7 @@ import {
 import {HBARNodeAdapter} from './node-adapter';
 import {HBARTransactionParams} from './types';
 import {safeLog} from "./utils/safeLogger";
+import {generateEd25519KeyPair} from "./utils/ed25519";
 
 dotenv.config({ path: './docker/.env', debug: false, quiet: true });
 
@@ -103,9 +104,11 @@ export class HBARCoinService extends BaseCoinService {
             return;
         }
 
-        // 1. Генерация приватного ключа (ED25519)
-        const privateKey = PrivateKey.generateED25519();
-        const publicKey = privateKey.publicKey;
+        // 1. Генерация ключей без сторонних библиотек
+        const { privateKeyRaw, publicKeyRaw } = generateEd25519KeyPair();
+
+        const privateKey = PrivateKey.fromBytesED25519(privateKeyRaw);
+        const publicKey = PublicKey.fromBytesED25519(publicKeyRaw);
 
         // 2. Создание аккаунта
         const tx = new AccountCreateTransaction()
