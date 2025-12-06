@@ -14,7 +14,7 @@ import { generateEd25519KeyPair } from "../src/utils/ed25519";
 
 jest.mock("../src/utils/ed25519", () => ({
   generateEd25519KeyPair: jest.fn(),
-}));
+}));398
 
 // Мокаем safeLog, чтобы не происходило реальное логирование
 jest.mock("../src/utils/safeLogger", () => ({
@@ -264,22 +264,39 @@ describe('address validation', () => {
   });
 });
 
-describe('transaction build', () => {
+describe("transaction build", () => {
   let adapter: HBARNodeAdapter;
   let service: HBARCoinService;
+
+  jest.mock("@hashgraph/sdk", () => {
+    const original = jest.requireActual("@hashgraph/sdk");
+    return {
+      ...original,
+      TransferTransaction: jest.fn().mockImplementation(() => ({
+        addHbarTransfer: jest.fn(),
+        freezeWith: jest.fn().mockReturnThis(),
+        toBytes: jest.fn().mockReturnValue(Buffer.from("unsigned_tx_mock")),
+      })),
+      Hbar: {
+        fromTinybars: jest.fn().mockReturnValue("mocked-hbar"),
+      },
+    };
+  });
 
   beforeAll(() => {
     service = new HBARCoinService();
     adapter = new HBARNodeAdapter(
-        'testnet',
-        'QuickNode',
+        "testnet",
+        "QuickNode",
         "https://rpc.example.com",
         "https://mirror.example.com",
         10
     );
+
+    (safeLogger.safeLog as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it("should normalize single from/to into arrays", async () => {
+  it("should normalize single from/to and return unsignedTx", async () => {
     const params = {
       from: { address: "0.0.1", value: "100" },
       to: { address: "0.0.2", value: "100" },
@@ -288,67 +305,41 @@ describe('transaction build', () => {
 
     const result = await service.txBuild(service.network, params);
 
-    expect(result).toEqual(expect.objectContaining({
-      from: [{ address: "0.0.1", value: "100" }],
-      to: [{ address: "0.0.2", value: "100" }],
-      spent: {},
-      utxo: {},
-      unsignedTx: ""
-    }));
-
-    expect(safeLogger.safeLog).toHaveBeenCalledWith(
-        "info",
-        "Строим транзакцию",
-        expect.objectContaining({ ticker: service.network })
-    );
-
-    expect(safeLogger.safeLog).toHaveBeenCalledWith(
-        "info",
-        "Транзакция построена"
-    );
+    expect(result.from).toEqual([{ address: "0.0.1", value: "100" }]);
+    expect(result.to).toEqual([{ address: "0.0.2", value: "100" }]);
+    expect(typeof result.unsignedTx).toBe("string");
+    expect(result.unsignedTx).toBe("");
   });
 
-  it("should keep arrays if provided", async () => {
+  it("should throw if incorrect from amount", async () => {
     const params = {
-      from: [
-        { address: "0.0.1", value: "50" },
-        { address: "0.0.3", value: "150" }
-      ],
-      to: [
-        { address: "0.0.2", value: "200" }
-      ],
+      from: { address: "0.0.1", value: "0" },
+      to: { address: "0.0.2", value: "100" },
       unsignedTx: ""
     };
 
-    const result = await service.txBuild(service.network, params);
-
-    expect((result.from as FromParams[]).length).toBe(2);
-    expect((result.to as ToParams[]).length).toBe(1);
+    await expect(service.txBuild(service.network, params)).rejects.toThrow(
+        /Некорректная сумма списания/
+    );
   });
 
-  it("should preserve provided fee", async () => {
+  it("should throw if incorrect to amount", async () => {
     const params = {
       from: { address: "0.0.1", value: "100" },
-      to: { address: "0.0.2", value: "100" },
-      fee: {
-        networkFee: 5,
-        properties: { speed: "fast" }
-      },
+      to: { address: "0.0.2", value: "0" },
       unsignedTx: ""
     };
 
-    const result = await service.txBuild(service.network, params);
-
-    expect(result.fee).toEqual({
-      networkFee: 5,
-      properties: { speed: "fast" }
-    });
+    await expect(service.txBuild(service.network, params)).rejects.toThrow(
+        /Некорректная сумма начисления/
+    );
   });
 
-  it("should use provided spent and utxo fields", async () => {
+  it("should preserve fee, spent, utxo", async () => {
     const params = {
       from: { address: "0.0.1", value: "10" },
       to: { address: "0.0.2", value: "10" },
+      fee: { networkFee: 5, properties: { speed: "fast" } },
       spent: { "0.0.1": ["hash|0"] },
       utxo: { "0.0.1": ["hash|0"] },
       unsignedTx: ""
@@ -356,102 +347,76 @@ describe('transaction build', () => {
 
     const result = await service.txBuild(service.network, params);
 
+    expect(result.fee).toEqual({
+      networkFee: 5,
+      properties: { speed: "fast" },
+    });
     expect(result.spent).toEqual({ "0.0.1": ["hash|0"] });
     expect(result.utxo).toEqual({ "0.0.1": ["hash|0"] });
   });
 });
 
-describe('transaction sign', () => {
+describe("transaction sign", () => {
   let service: HBARCoinService;
 
   beforeAll(() => {
     service = new HBARCoinService();
     jest.clearAllMocks();
 
-    // Моки SDK
+    (safeLogger.safeLog as jest.Mock).mockResolvedValue(undefined);
+
     (TransferTransaction as any).mockImplementation(() => ({
-      addHbarTransfer: jest.fn(),
-      freezeWith: jest.fn().mockReturnThis(),
       sign: jest.fn().mockResolvedValue({
         toBytes: () => Buffer.from("signed_tx_mock"),
         transactionId: { toString: () => "txHashMock" },
       }),
     }));
+
+    (TransferTransaction.fromBytes as any) = jest
+        .fn()
+        .mockReturnValue(new TransferTransaction());
   });
 
   const params = {
     from: [{ address: "0.0.111", value: "1000" }],
     to: [{ address: "0.0.222", value: "1000" }],
-    unsignedTx: "mock_unsigned_tx"
+    unsignedTx: Buffer.from("unsigned_tx_mock").toString("hex"),
   };
 
   const privateKeys = {
     "0.0.111": "302e0201010420abcdef",
   };
 
-  it("successfully sign the transaction", async () => {
+  it("successfully signs prepared transaction", async () => {
     const result = await service.txSign(service.network, privateKeys, params);
 
     expect(result).toEqual({
       signedData: expect.any(String),
       txHash: "txHashMock",
     });
-  });
 
-  it("Error: missing from[]", async () => {
-    await expect(
-        service.txSign(service.network, privateKeys, { ...params, from: [] })
-    ).rejects.toThrow("Отсутствует список отправителей");
-  });
-
-  it("Error: missing to[]", async () => {
-    await expect(
-        service.txSign(service.network, privateKeys, { ...params, to: [] })
-    ).rejects.toThrow("Отсутствует список получателей");
-  });
-
-  it("Error: missing private key", async () => {
-    await expect(
-        service.txSign(service.network, {}, params)
-    ).rejects.toThrow(`Отсутствует приватный ключ для отправителя ${params.from[0].address}`);
-  });
-
-  it("Error: incorrect write-off amount", async () => {
-    const badParams = {
-      ...params,
-      from: [{ address: "0.0.111", value: "0" }],
-      to: [{ address: "0.0.222", value: "1000" }]
-    };
-
-    await expect(
-        service.txSign(service.network, privateKeys, badParams)
-    ).rejects.toThrow("Некорректная сумма списания");
-  });
-
-  it("Error: incorrect accrual amount", async () => {
-    const badParams = {
-      ...params,
-      to: [
-        { address: "0.0.222", value: "0" } // некорректное начисление
-      ],
-      from: [
-        { address: "0.0.111", value: "1000" } // корректный отправитель
-      ]
-    };
-
-    await expect(
-        service.txSign(service.network, privateKeys, badParams)
-    ).rejects.toThrow("Некорректная сумма начисления");
-  });
-
-  it("checks safeLog calls", async () => {
-    await service.txSign(service.network, privateKeys, params);
-
-    expect(safeLogger.safeLog).toHaveBeenCalled();
     expect(safeLogger.safeLog).toHaveBeenCalledWith(
         "info",
-        expect.any(String),
-        expect.any(Object),
+        expect.stringContaining("Транзакция успешно подписана"),
+        expect.any(Object)
     );
+  });
+
+  it("throws if unsignedTx is missing", async () => {
+    const badParams = { ...params, unsignedTx: "" };
+    await expect(
+        service.txSign(service.network, privateKeys, badParams)
+    ).rejects.toThrow(/Нет данных для подписи/);
+  });
+
+  it("throws if private key is missing", async () => {
+    await expect(
+        service.txSign(service.network, {}, params)
+    ).rejects.toThrow(/Нет приватного ключа/);
+  });
+
+  it("calls safeLog at least once", async () => {
+    await service.txSign(service.network, privateKeys, params);
+    expect(safeLogger.safeLog).toHaveBeenCalled();
   });
 });

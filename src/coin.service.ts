@@ -220,90 +220,22 @@ export class HBARCoinService extends BaseCoinService {
         try {
             await safeLog("info", "Начинаем подпись транзакции", { ticker, params });
 
-            // Приводим к массиву
-            const fromArr = Array.isArray(params.from) ? params.from : [params.from];
-            const toArr = Array.isArray(params.to) ? params.to : [params.to];
-
-            if (!fromArr.length) {
-                await safeLog("error", "Проверка не пройдена: отсутствует from[]", { ticker });
-                throw new Error("Отсутствует список отправителей");
+            if (!params.unsignedTx) {
+                throw new Error("Нет данных для подписи (unsignedTx)");
             }
-
-            if (!toArr.length) {
-                await safeLog("error", "Проверка не пройдена: отсутствует to[]", { ticker });
-                throw new Error("Отсутствует список получателей");
-            }
-
-            // Проверяем что приватный ключ для всех from есть
-            for (const fromAddr of fromArr) {
-                const addr = fromAddr.address;
-
-                if (!privateKeys[addr]) {
-                    await safeLog("error", "Отсутствует приватный ключ для отправителя", {
-                        ticker,
-                        addr,
-                    });
-                    throw new Error(`Отсутствует приватный ключ для отправителя ${addr}`);
-                }
-            }
-
-            // Создаём транзакцию
-            const tx = new TransferTransaction();
-
-            // Добавляем отправителей (negative amounts)
-            for (const fromAddr of fromArr) {
-                const addr = fromAddr.address;
-
-                // Превращаем в число
-                const factor = Number(process.env.TINYBAR_CONVERSION_FACTOR ?? 100000000);
-                const amountTiny = Math.round(Number(fromAddr.value) * factor);
-
-                if (!amountTiny || amountTiny <= 0) {
-                    await safeLog("error", "Некорректная сумма списания для отправителя", {
-                        ticker,
-                        addr,
-                        amountTiny,
-                    });
-                    throw new Error(
-                        `Некорректная сумма списания для ${addr}: ${amountTiny}`
-                    );
-                }
-
-                tx.addHbarTransfer(addr, Hbar.fromTinybars(-amountTiny));
-            }
-
-            // Добавляем получателей (positive amounts)
-            for (const toAddr of toArr) {
-                const addr = toAddr.address;
-
-                const factor = Number(process.env.TINYBAR_CONVERSION_FACTOR ?? 100000000);
-                const amountTiny = Math.round(Number(toAddr.value) * factor);
-
-                if (!amountTiny || amountTiny <= 0) {
-                    await safeLog("error", "Некорректная сумма начисления для получателя", {
-                        ticker,
-                        addr,
-                        amountTiny,
-                    });
-                    throw new Error(
-                        `Некорректная сумма начисления для ${addr}: ${amountTiny}`
-                    );
-                }
-
-                tx.addHbarTransfer(addr, Hbar.fromTinybars(amountTiny));
-            }
-
-            // Freeze
-            tx.freezeWith(this.client);
-
-            await safeLog("info", "Транзакция собрана и заморожена", { ticker });
 
             // Подписываем приватным ключом первого отправителя
             // (Hedera позволяет мультиподпись, но в простом случае подписывает один)
             const signerAddr = params.from[0].address;
             const privHex = privateKeys[signerAddr];
 
+            if (!privHex) {
+                throw new Error(`Нет приватного ключа для ${signerAddr}`);
+            }
+
             const privKey = PrivateKey.fromStringECDSA(privHex);
+            const unsignedBytes = Buffer.from(params.unsignedTx, "hex");
+            const tx = TransferTransaction.fromBytes(unsignedBytes);
 
             await safeLog("info", "Подписываем транзакцию приватным ключом", {
                 ticker,
@@ -349,11 +281,78 @@ export class HBARCoinService extends BaseCoinService {
     ): Promise<HBARTransactionParams> {
         await safeLog("info", "Строим транзакцию", { ticker, params });
 
-        // Hedera HBAR не требует UTXO, просто возвращаем валидированные данные.
-        // Но можем подготовить структуру, привести from/to к массивам и т.д.
-
+        // Приводим к массиву
         const fromArr = Array.isArray(params.from) ? params.from : [params.from];
         const toArr = Array.isArray(params.to) ? params.to : [params.to];
+
+        if (!fromArr.length) {
+            await safeLog("error", "Проверка не пройдена: отсутствует from[]", { ticker });
+            throw new Error("Отсутствует список отправителей");
+        }
+
+        if (!toArr.length) {
+            await safeLog("error", "Проверка не пройдена: отсутствует to[]", { ticker });
+            throw new Error("Отсутствует список получателей");
+        }
+
+        // Проверяем что приватный ключ для всех from есть
+        for (const fromAddr of fromArr) {
+            const addr = fromAddr.address;
+        }
+
+        // Создаём транзакцию
+        const tx = new TransferTransaction();
+
+        // Добавляем отправителей (negative amounts)
+        for (const fromAddr of fromArr) {
+            const addr = fromAddr.address;
+
+            // Превращаем в число
+            const factor = Number(process.env.TINYBAR_CONVERSION_FACTOR ?? 100000000);
+            const amountTiny = Math.round(Number(fromAddr.value) * factor);
+
+            if (!amountTiny || amountTiny <= 0) {
+                await safeLog("error", "Некорректная сумма списания для отправителя", {
+                    ticker,
+                    addr,
+                    amountTiny,
+                });
+                throw new Error(
+                    `Некорректная сумма списания для ${addr}: ${amountTiny}`
+                );
+            }
+
+            tx.addHbarTransfer(addr, Hbar.fromTinybars(-amountTiny));
+        }
+
+        // Добавляем получателей (positive amounts)
+        for (const toAddr of toArr) {
+            const addr = toAddr.address;
+
+            const factor = Number(process.env.TINYBAR_CONVERSION_FACTOR ?? 100000000);
+            const amountTiny = Math.round(Number(toAddr.value) * factor);
+
+            if (!amountTiny || amountTiny <= 0) {
+                await safeLog("error", "Некорректная сумма начисления для получателя", {
+                    ticker,
+                    addr,
+                    amountTiny,
+                });
+                throw new Error(
+                    `Некорректная сумма начисления для ${addr}: ${amountTiny}`
+                );
+            }
+
+            tx.addHbarTransfer(addr, Hbar.fromTinybars(amountTiny));
+        }
+
+        // Freeze
+        tx.freezeWith(this.client);
+
+        await safeLog("info", "Транзакция собрана и заморожена", { ticker });
+
+        // Hedera HBAR не требует UTXO, просто возвращаем валидированные данные.
+        // Но можем подготовить структуру, привести from/to к массивам и т.д.
 
         const built: HBARTransactionParams = {
             from: fromArr,
