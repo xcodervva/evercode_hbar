@@ -100,7 +100,6 @@ export enum TxStatus {
   'unknown' = 'unknown', // для всего остального
 }
 
-
 export type GetBlocksResult = Block[];
 
 export type GetBuildParams = Record<string, unknown>;
@@ -142,6 +141,25 @@ export interface MirrorNodeBlock {
 
 export interface MirrorNodeBlocksResponse {
   blocks: MirrorNodeBlock[];
+}
+
+export interface MirrorTransfer {
+  account: string;
+  amount: number;
+  is_approval?: boolean;
+  token_id?: string;
+}
+
+export interface MirrorTransaction {
+  transaction_id: string;
+  consensus_timestamp: string;
+  name: string;
+  result: string;
+  transfers: MirrorTransfer[];
+}
+
+export interface MirrorTransactionResponse {
+  transactions: MirrorTransaction[];
 }
 
 // Базовый класс для coin services

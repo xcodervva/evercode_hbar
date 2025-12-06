@@ -7,6 +7,9 @@ import {
     GetBlockResult,
     GetHeightResult,
     MirrorNodeBlocksResponse,
+    MirrorTransaction,
+    MirrorTransactionResponse,
+    MirrorTransfer,
     RpcResponse,
     ToParams,
     Transaction,
@@ -66,7 +69,7 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
             await safeLog("info", "Fetching Hedera tx from API", {ticker, hash});
 
             // Mirror Node API возвращает список транзакций по id
-            const response = await this.request<{  transactions: any[] }, void>( 'GET',`${this.mirrorUrl}/api/v1/transactions/${hash}`);
+            const response = await this.request<MirrorTransactionResponse, void>( 'GET',`${this.mirrorUrl}/api/v1/transactions/${hash}`);
 
             if (!response.transactions?.length) {
                 const reason = "Transaction not found";
@@ -74,8 +77,8 @@ export class HBARNodeAdapter extends BaseNodeAdapter {
                 throw new Error(reason);
             }
 
-            const rawTx = response.transactions[0];
-            const transfers = rawTx?.transfers || [];
+            const rawTx: MirrorTransaction = response.transactions[0];
+            const transfers: MirrorTransfer[] = rawTx?.transfers || [];
 
             const from: FromParams[] = transfers
                 .filter((t: any) => t.amount < 0)
