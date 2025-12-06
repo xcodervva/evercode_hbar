@@ -283,6 +283,14 @@ describe("transaction build", () => {
     };
   });
 
+  beforeEach(() => {
+    (TransferTransaction as any).mockImplementation(() => ({
+      addHbarTransfer: jest.fn(),
+      freezeWith: jest.fn().mockReturnThis(),
+      toBytes: jest.fn().mockReturnValue(Buffer.from("unsigned_tx_mock")),
+    }));
+  });
+
   beforeAll(() => {
     service = new HBARCoinService();
     adapter = new HBARNodeAdapter(
@@ -308,7 +316,7 @@ describe("transaction build", () => {
     expect(result.from).toEqual([{ address: "0.0.1", value: "100" }]);
     expect(result.to).toEqual([{ address: "0.0.2", value: "100" }]);
     expect(typeof result.unsignedTx).toBe("string");
-    expect(result.unsignedTx).toBe("");
+    expect(result.unsignedTx.length).toBeGreaterThan(0);
   });
 
   it("should throw if incorrect from amount", async () => {

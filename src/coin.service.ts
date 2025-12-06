@@ -360,7 +360,7 @@ export class HBARCoinService extends BaseCoinService {
             fee: params.fee,
             spent: params.spent ?? {},
             utxo: params.utxo ?? {},
-            unsignedTx: params.unsignedTx ?? ""
+            unsignedTx: Buffer.from(tx.toBytes()).toString("hex"),
         };
 
         await safeLog("info", "Транзакция построена");
